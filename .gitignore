@@ -1,0 +1,42 @@
+# Python & Virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local governance & prompt/design artifacts
+AGENTS.md
+CLAUDE.md
+CLAUDE_ATTEMPT_*.md
+SPEC.md
+SPECIFICATION.md
+DESIGN.md
+.hallmark/
+artifacts/
+evidence/
+*.working
+
+# Node & Frontend dependencies/builds
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.vite/
+
+# Environment files
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
