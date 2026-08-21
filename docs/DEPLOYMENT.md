@@ -4,7 +4,11 @@
 
 `CriticalDependencyResponseMesh` is `UPGRADABLE` using GenLayer native root-slot upgraders. The constructor receives one public Studio account address and registers it in `gl.storage.Root.get().upgraders`. The same authorized address may call `upgrade(new_code)`.
 
-The intended Studio deployer/upgrader public address must be selected and locked before anonymous `PRE_DEPLOY` review. No deployment or write is authorized before that approval.
+The Studio account below is locked for anonymous `PRE_DEPLOY` review. It will serve as both deployer and native upgrader:
+
+`0x0d4b860b08b9fba6cf1d928c4a19863176ead563`
+
+No deployment or write is authorized before `PRE_DEPLOY` approval. Changing this account invalidates that approval and requires a refreshed review.
 
 ## Draft deployment manifest
 
@@ -12,7 +16,8 @@ The intended Studio deployer/upgrader public address must be selected and locked
 - Chain ID: `61999`
 - RPC: `https://studio.genlayer.com/api`
 - Contract source: `contracts/critical_dependency_response_mesh.py`
-- Constructor argument: selected Studio upgrader public address
+- Constructor argument: `0x0d4b860b08b9fba6cf1d928c4a19863176ead563`
+- Studio account role: deployer + native upgrader
 - Linked contracts: none
 - Contract address: populated after deployment
 - Deployment transaction: populated after deployment

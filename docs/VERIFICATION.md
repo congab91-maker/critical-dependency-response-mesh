@@ -8,6 +8,7 @@ This document records pre-deployment evidence only. It does not claim a Studione
 - Network target: GenLayer Studionet, chain ID `61999`
 - Contract: `contracts/critical_dependency_response_mesh.py`
 - Deployment classification: `UPGRADABLE`
+- Locked Studio deployer/upgrader: `0x0d4b860b08b9fba6cf1d928c4a19863176ead563`
 - Contract source SHA-256: `3FE9C2F8423CA03CC8ECC021A0E7263F7443C43DF446EC2FA0D264E50DBC3A16`
 
 ## Independent local verification
