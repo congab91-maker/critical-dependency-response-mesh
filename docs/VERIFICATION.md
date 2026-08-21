@@ -9,8 +9,8 @@ This document records pre-deployment evidence only. It does not claim a Studione
 - Contract: `contracts/critical_dependency_response_mesh.py`
 - Deployment classification: `UPGRADABLE`
 - Locked Studio deployer/upgrader: `0x0d4b860b08b9fba6cf1d928c4a19863176ead563`
-- Reviewed commit: `abd3796b917711fd21c9f904330927904db9dd13`
-- Reviewed tree: `3a28b407ec1bc7945d16d9e7f3b178d4394fd9c4`
+- Reviewed commit: `ab252af64c8b45182ebb2820dfd37f47f958dab4`
+- Reviewed tree: `d696b4e3d9b7c6c9da6825b494baf65e9f8c7d2d`
 - Contract source SHA-256: `48FBA3FFA0E1764477D2336E85A03D3E5772857DDEB6899047E7EC2912FEBFAD`
 
 ## Independent local verification
