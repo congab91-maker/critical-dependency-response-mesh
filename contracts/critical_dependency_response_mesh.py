@@ -601,6 +601,39 @@ class CriticalDependencyResponseMesh(gl.Contract):
         canonical_graph = "\n".join(node_lines + edge_lines)
         graph_hash = "0x" + hashlib.sha256(canonical_graph.encode("utf-8")).hexdigest().lower()
 
+        cisa_uri = str(self.incident_cisa_kev_uri[incident_id])
+        nvd_uri = str(self.incident_nvd_cve_uri[incident_id])
+        osv_uri = str(self.incident_osv_uri[incident_id])
+
+        def fetch_snapshot_digest() -> str:
+            bodies: list[bytes] = []
+            for uri in (cisa_uri, nvd_uri, osv_uri):
+                response = gl.nondet.web.get(uri)
+                if response.status != 200 or response.body is None or len(response.body) > MAX_RESPONSE_BODY_SIZE:
+                    raise gl.vm.UserError("Cannot lock graph: required evidence source unavailable")
+                # Validate JSON at the freeze boundary; identity is rechecked during triage.
+                try:
+                    json.loads(response.body.decode("utf-8"))
+                except Exception as exc:
+                    raise gl.vm.UserError(
+                        "Cannot lock graph: required evidence is malformed JSON"
+                    ) from exc
+                bodies.append(response.body)
+            framed = b"CISA\x00" + bodies[0] + b"\x00NVD\x00" + bodies[1] + b"\x00OSV\x00" + bodies[2]
+            return "0x" + hashlib.sha256(framed).hexdigest().lower()
+
+        def validate_snapshot_digest(leader_result: gl.vm.Result) -> bool:
+            if not isinstance(leader_result, gl.vm.Return):
+                return False
+            try:
+                return fetch_snapshot_digest() == leader_result.calldata
+            except Exception:
+                return False
+
+        evidence_digest = gl.vm.run_nondet_unsafe(fetch_snapshot_digest, validate_snapshot_digest)
+        if evidence_digest != self.incident_snapshot_hash[incident_id]:
+            raise gl.vm.UserError("Evidence snapshot hash mismatch; graph remains open")
+
         self.incident_graph_hash[incident_id] = graph_hash
         self.incident_phase[incident_id] = "LOCKED"
 
@@ -631,6 +664,7 @@ class CriticalDependencyResponseMesh(gl.Contract):
         target_pid_val = norm_pid
         target_pkg_val = str(self.project_package_name[proj_key])
         target_ver_val = str(self.project_version[proj_key])
+        locked_snapshot_hash = str(self.incident_snapshot_hash[incident_id])
 
         # Build adjacency graph
         total_projects = int(self.incident_project_count.get(incident_id, u256(0)))
@@ -662,6 +696,7 @@ class CriticalDependencyResponseMesh(gl.Contract):
 
             # 2. Fetch CISA KEV
             cisa_summary = ""
+            cisa_body_bytes = b""
             try:
                 cisa_res = gl.nondet.web.get(cisa_uri_val)
                 if cisa_res.status != 200 or cisa_res.body is None or len(cisa_res.body) > MAX_RESPONSE_BODY_SIZE:
@@ -674,6 +709,7 @@ class CriticalDependencyResponseMesh(gl.Contract):
                         "reason": f"CISA KEV source unavailable or exceeded payload limit (status {cisa_res.status})",
                     }
                 cisa_body_str = cisa_res.body.decode("utf-8", errors="replace")
+                cisa_body_bytes = cisa_res.body
                 try:
                     cisa_data = json.loads(cisa_body_str)
                 except Exception:
@@ -716,6 +752,7 @@ class CriticalDependencyResponseMesh(gl.Contract):
 
             # 3. Fetch NVD CVE
             nvd_summary = ""
+            nvd_body_bytes = b""
             try:
                 nvd_res = gl.nondet.web.get(nvd_uri_val)
                 if nvd_res.status != 200 or nvd_res.body is None or len(nvd_res.body) > MAX_RESPONSE_BODY_SIZE:
@@ -728,6 +765,7 @@ class CriticalDependencyResponseMesh(gl.Contract):
                         "reason": f"NVD source unavailable or exceeded payload limit (status {nvd_res.status})",
                     }
                 nvd_body_str = nvd_res.body.decode("utf-8", errors="replace")
+                nvd_body_bytes = nvd_res.body
                 try:
                     nvd_data = json.loads(nvd_body_str)
                 except Exception:
@@ -780,6 +818,7 @@ class CriticalDependencyResponseMesh(gl.Contract):
 
             # 4. Fetch OSV Record
             osv_data = None
+            osv_body_bytes = b""
             try:
                 osv_res = gl.nondet.web.get(osv_uri_val)
                 if osv_res.status != 200 or osv_res.body is None or len(osv_res.body) > MAX_RESPONSE_BODY_SIZE:
@@ -792,6 +831,7 @@ class CriticalDependencyResponseMesh(gl.Contract):
                         "reason": f"OSV source unavailable or exceeded payload limit (status {osv_res.status})",
                     }
                 osv_body_str = osv_res.body.decode("utf-8", errors="replace")
+                osv_body_bytes = osv_res.body
                 try:
                     osv_data = json.loads(osv_body_str)
                 except Exception:
@@ -812,6 +852,17 @@ class CriticalDependencyResponseMesh(gl.Contract):
                     "reason_code": "EVIDENCE_SOURCE_UNAVAILABLE",
                     "reason": "Failed to fetch OSV source",
                 }
+
+            framed_snapshot = (
+                b"CISA\x00" + cisa_body_bytes
+                + b"\x00NVD\x00" + nvd_body_bytes
+                + b"\x00OSV\x00" + osv_body_bytes
+            )
+            current_snapshot_hash = "0x" + hashlib.sha256(framed_snapshot).hexdigest().lower()
+            if current_snapshot_hash != locked_snapshot_hash:
+                raise gl.vm.UserError(
+                    "Official evidence changed after snapshot lock; triage remains retryable"
+                )
 
             # Check OSV content
             affected_packages: dict[str, list[dict]] = {}
@@ -1072,22 +1123,33 @@ Respond strictly with a JSON object matching this schema:
                     "reason": f"No dependency path from {target_pid_val} to vulnerable package {primary_pkg_val} found in registered graph",
                 }
 
-            # If LLM returned a valid conforming schema matching deterministic consequence tuple, use LLM explanation
+            # Deterministic guards establish package/range/path facts. For a factual
+            # exposure, validators' semantic judgment decides whether the evidence
+            # supports a definitive affected consequence or the safe uncertain branch.
+            if deter_decision["classification"] != "AFFECTED":
+                return deter_decision
+
+            allowed_semantic_tuples = {
+                (deter_decision["classification"], deter_decision["action"], deter_decision["impact_kind"]),
+                ("UNCERTAIN", "REVIEW", "INSUFFICIENT"),
+            }
             if validate_triage_result_schema(llm_result_dict):
                 llm_tuple = (
                     llm_result_dict.get("classification"),
                     llm_result_dict.get("action"),
                     llm_result_dict.get("impact_kind"),
                 )
-                deter_tuple = (
-                    deter_decision["classification"],
-                    deter_decision["action"],
-                    deter_decision["impact_kind"],
-                )
-                if llm_tuple == deter_tuple:
+                if llm_tuple in allowed_semantic_tuples:
                     return llm_result_dict
 
-            return deter_decision
+            return {
+                "classification": "UNCERTAIN",
+                "action": "REVIEW",
+                "impact_kind": "INSUFFICIENT",
+                "confidence_band": "LOW",
+                "reason_code": "AMBIGUOUS_EVIDENCE",
+                "reason": "Validator semantic judgment did not safely support a definitive exposure outcome",
+            }
 
         def validator_fn(leaders_res: gl.vm.Result) -> bool:
             if not isinstance(leaders_res, gl.vm.Return):

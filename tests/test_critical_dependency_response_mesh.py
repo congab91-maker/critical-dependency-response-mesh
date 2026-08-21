@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import json
 from pathlib import Path
 
@@ -17,7 +18,6 @@ CISA_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulne
 NVD_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2026-45892"
 OSV_URL = "https://api.osv.dev/v1/vulns/GHSA-2026-45892"
 PRIMARY_PACKAGE = "express-jwt-guard"
-SNAPSHOT_HASH = "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 SAMPLE_CISA_BODY = json.dumps({
     "cveID": "CVE-2026-45892",
@@ -70,6 +70,16 @@ SAMPLE_OSV_BODY = json.dumps({
     ]
 })
 
+def snapshot_hash(cisa=SAMPLE_CISA_BODY, nvd=SAMPLE_NVD_BODY, osv=SAMPLE_OSV_BODY):
+    return "0x" + hashlib.sha256(
+        b"CISA\x00" + cisa.encode()
+        + b"\x00NVD\x00" + nvd.encode()
+        + b"\x00OSV\x00" + osv.encode()
+    ).hexdigest()
+
+
+SNAPSHOT_HASH = snapshot_hash()
+
 
 def get_future_deadline(seconds_from_now: int = 86400) -> int:
     return int(datetime.datetime.now(datetime.UTC).timestamp()) + seconds_from_now
@@ -83,6 +93,22 @@ def mock_standard_sources(direct_vm, cisa=SAMPLE_CISA_BODY, nvd=SAMPLE_NVD_BODY,
     direct_vm.mock_web(r".*cisa\.gov.*", {"status": 200, "body": cisa})
     direct_vm.mock_web(r".*nvd\.nist\.gov.*", {"status": 200, "body": nvd})
     direct_vm.mock_web(r".*api\.osv\.dev.*", {"status": 200, "body": osv})
+    direct_vm.mock_llm(r"(?s).*Relationship: DIRECT_DEPENDENCY.*", json.dumps({
+        "classification": "AFFECTED",
+        "action": "QUARANTINE",
+        "impact_kind": "DIRECT",
+        "confidence_band": "HIGH",
+        "reason_code": "DIRECT_VULNERABILITY_EXPOSURE",
+        "reason": "The official evidence supports direct exposure.",
+    }))
+    direct_vm.mock_llm(r"(?s).*Relationship: TRANSITIVE_OR_INDEPENDENT.*", json.dumps({
+        "classification": "AFFECTED",
+        "action": "REVIEW",
+        "impact_kind": "TRANSITIVE",
+        "confidence_band": "HIGH",
+        "reason_code": "TRANSITIVE_DEPENDENCY_EXPOSURE",
+        "reason": "The official evidence supports transitive exposure through vulnerable-lib.",
+    }))
 
 
 # 1. Constructor and Limits
@@ -304,6 +330,7 @@ def test_05_add_dependencies(direct_vm, direct_deploy):
 def test_06_lock_graph(direct_vm, direct_deploy):
     contract = deploy_contract(direct_deploy)
     deadline = get_future_deadline(3600)
+    mock_standard_sources(direct_vm)
 
     with direct_vm.prank(COORDINATOR):
         inc_id = contract.create_incident(
@@ -545,9 +572,7 @@ def test_12_triage_traversal_depth_cap(direct_vm, direct_deploy):
 def test_13_triage_source_failure(direct_vm, direct_deploy):
     contract = deploy_contract(direct_deploy)
     deadline = get_future_deadline(3600)
-
-    # Mock CISA returning 500 error
-    direct_vm.mock_web(r".*cisa\.gov.*", {"status": 500, "body": b"Internal Server Error"})
+    mock_standard_sources(direct_vm)
 
     with direct_vm.prank(COORDINATOR):
         inc_id = contract.create_incident(
@@ -561,6 +586,9 @@ def test_13_triage_source_failure(direct_vm, direct_deploy):
     with direct_vm.prank(COORDINATOR):
         contract.lock_graph(inc_id)
 
+    # The frozen snapshot succeeded; a later transient fetch failure maps safely.
+    direct_vm.clear_mocks()
+    direct_vm.mock_web(r".*cisa\.gov.*", {"status": 500, "body": b"Internal Server Error"})
     contract.triage_next(inc_id, "service-auth")
 
     triage = json.loads(contract.get_triage_json(inc_id, "service-auth"))
@@ -577,11 +605,12 @@ def test_14_triage_cve_identity_mismatch(direct_vm, direct_deploy):
 
     # Mock CISA returning a different CVE
     diff_cisa = json.dumps({"cveID": "CVE-2026-99999", "product": "other-pkg"})
-    direct_vm.mock_web(r".*cisa\.gov.*", {"status": 200, "body": diff_cisa})
+    mock_standard_sources(direct_vm, cisa=diff_cisa)
 
     with direct_vm.prank(COORDINATOR):
         inc_id = contract.create_incident(
-            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE, SNAPSHOT_HASH, deadline
+            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE,
+            snapshot_hash(cisa=diff_cisa), deadline
         )
         contract.open_graph(inc_id)
 
@@ -621,7 +650,8 @@ def test_15_triage_ecosystem_mismatch(direct_vm, direct_deploy):
 
     with direct_vm.prank(COORDINATOR):
         inc_id = contract.create_incident(
-            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE, SNAPSHOT_HASH, deadline
+            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE,
+            snapshot_hash(osv=pypi_osv), deadline
         )
         contract.open_graph(inc_id)
 
@@ -663,12 +693,19 @@ def test_15b_malformed_or_missing_osv_package_is_insufficient(
 
     with direct_vm.prank(COORDINATOR):
         inc_id = contract.create_incident(
-            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE, SNAPSHOT_HASH,
+            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE,
+            snapshot_hash(osv=osv_body),
             get_future_deadline(3600),
         )
         contract.open_graph(inc_id)
     with direct_vm.prank(ALICE):
         contract.register_project(inc_id, f"service-{suffix}", PRIMARY_PACKAGE, "1.0.0")
+    if suffix == "malformed":
+        with direct_vm.expect_revert("required evidence is malformed JSON"):
+            with direct_vm.prank(COORDINATOR):
+                contract.lock_graph(inc_id)
+        assert json.loads(contract.get_incident_json(inc_id))["phase"] == "GRAPH_OPEN"
+        return
     with direct_vm.prank(COORDINATOR):
         contract.lock_graph(inc_id)
 
@@ -695,7 +732,8 @@ def test_16_triage_prompt_injection_safety(direct_vm, direct_deploy):
 
     with direct_vm.prank(COORDINATOR):
         inc_id = contract.create_incident(
-            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE, SNAPSHOT_HASH, deadline
+            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE,
+            snapshot_hash(cisa=injected_cisa), deadline
         )
         contract.open_graph(inc_id)
 
@@ -711,6 +749,102 @@ def test_16_triage_prompt_injection_safety(direct_vm, direct_deploy):
     # Remains properly classified as AFFECTED / QUARANTINE despite injection text
     assert triage["classification"] == "AFFECTED"
     assert triage["action"] == "QUARANTINE"
+
+
+def test_16b_snapshot_digest_mismatch_keeps_graph_open(direct_vm, direct_deploy):
+    contract = deploy_contract(direct_deploy)
+    mock_standard_sources(direct_vm)
+    wrong_digest = "0x" + ("ab" * 32)
+    with direct_vm.prank(COORDINATOR):
+        inc_id = contract.create_incident(
+            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE, wrong_digest,
+            get_future_deadline(3600),
+        )
+        contract.open_graph(inc_id)
+    with direct_vm.prank(ALICE):
+        contract.register_project(inc_id, "digest-check", PRIMARY_PACKAGE, "1.0.0")
+    with direct_vm.expect_revert("Evidence snapshot hash mismatch"):
+        with direct_vm.prank(COORDINATOR):
+            contract.lock_graph(inc_id)
+    assert json.loads(contract.get_incident_json(inc_id))["phase"] == "GRAPH_OPEN"
+
+
+def test_16c_changed_snapshot_reverts_without_consuming_triage(direct_vm, direct_deploy):
+    contract = deploy_contract(direct_deploy)
+    mock_standard_sources(direct_vm)
+    with direct_vm.prank(COORDINATOR):
+        inc_id = contract.create_incident(
+            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE, SNAPSHOT_HASH,
+            get_future_deadline(3600),
+        )
+        contract.open_graph(inc_id)
+    with direct_vm.prank(ALICE):
+        contract.register_project(inc_id, "retryable-node", PRIMARY_PACKAGE, "1.0.0")
+    with direct_vm.prank(COORDINATOR):
+        contract.lock_graph(inc_id)
+
+    changed_nvd = json.dumps({"cve": {"id": CVE_ID, "descriptions": [{"lang": "en", "value": "changed mechanism"}]}})
+    direct_vm.clear_mocks()
+    mock_standard_sources(direct_vm, nvd=changed_nvd)
+    with direct_vm.expect_revert("triage remains retryable"):
+        contract.triage_next(inc_id, "retryable-node")
+    assert json.loads(contract.get_project_json(inc_id, "retryable-node"))["has_triage"] is False
+
+    direct_vm.clear_mocks()
+    mock_standard_sources(direct_vm)
+    contract.triage_next(inc_id, "retryable-node")
+    assert json.loads(contract.get_project_json(inc_id, "retryable-node"))["has_triage"] is True
+
+
+def test_16d_semantic_judgment_is_consequence_bearing_and_validator_rechecks(
+    direct_vm, direct_deploy
+):
+    contract = deploy_contract(direct_deploy)
+    ambiguous_nvd = json.dumps({
+        "cve": {
+            "id": CVE_ID,
+            "descriptions": [{
+                "lang": "en",
+                "value": "The affected range is known, but the deployment-relevant mechanism is unresolved.",
+            }],
+        }
+    })
+    mock_standard_sources(direct_vm, nvd=ambiguous_nvd)
+    with direct_vm.prank(COORDINATOR):
+        inc_id = contract.create_incident(
+            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE,
+            snapshot_hash(nvd=ambiguous_nvd),
+            get_future_deadline(3600),
+        )
+        contract.open_graph(inc_id)
+    with direct_vm.prank(ALICE):
+        contract.register_project(inc_id, "semantic-node", PRIMARY_PACKAGE, "1.0.0")
+    with direct_vm.prank(COORDINATOR):
+        contract.lock_graph(inc_id)
+
+    uncertain = json.dumps({
+        "classification": "UNCERTAIN",
+        "action": "REVIEW",
+        "impact_kind": "INSUFFICIENT",
+        "confidence_band": "LOW",
+        "reason_code": "AMBIGUOUS_EVIDENCE",
+        "reason": "The mechanism evidence does not support a definitive consequence.",
+    })
+    direct_vm.clear_mocks()
+    direct_vm.mock_web(r".*cisa\.gov.*", {"status": 200, "body": SAMPLE_CISA_BODY})
+    direct_vm.mock_web(r".*nvd\.nist\.gov.*", {"status": 200, "body": ambiguous_nvd})
+    direct_vm.mock_web(r".*api\.osv\.dev.*", {"status": 200, "body": SAMPLE_OSV_BODY})
+    direct_vm.mock_llm(r"(?s).*Relationship: DIRECT_DEPENDENCY.*", uncertain)
+    contract.triage_next(inc_id, "semantic-node")
+    triage = json.loads(contract.get_triage_json(inc_id, "semantic-node"))
+    assert (triage["classification"], triage["action"], triage["impact_kind"]) == (
+        "UNCERTAIN", "REVIEW", "INSUFFICIENT"
+    )
+
+    # A validator that semantically re-derives AFFECTED rejects the leader tuple.
+    direct_vm.clear_mocks()
+    mock_standard_sources(direct_vm, nvd=ambiguous_nvd)
+    assert direct_vm.run_validator(index=-1) is False
 
 
 # 17. Complete Lifecycle: Triaged -> Response -> Acknowledge -> Close -> Unresolved

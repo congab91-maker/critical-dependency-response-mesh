@@ -46,9 +46,10 @@ The incident state machine transitions strictly linearly through six canonical p
    - Maintainers declare directed dependency edges (`add_dependency`) from their project to registered upstream projects.
 3. **LOCKED**:
    - Coordinator freezes the dependency graph. The contract computes a deterministic SHA-256 graph hash over all sorted nodes and edges.
+   - Validators fetch all three canonical sources and independently derive a framed evidence digest (`CISA\0<body>\0NVD\0<body>\0OSV\0<body>`). Lock succeeds only when that digest equals the incident snapshot hash; unavailable, malformed, or mismatched evidence leaves the phase `GRAPH_OPEN`.
    - Graph mutations are permanently disabled.
 4. **TRIAGED**:
-   - Anyone may permissionlessly trigger `triage_node` for registered project nodes.
+   - Anyone may permissionlessly trigger `triage_next` for registered project nodes.
    - Validators independently fetch external sources, traverse the registered graph, and reach consensus on exposure.
    - When all registered nodes are triaged, the incident transitions to `TRIAGED`.
 5. **RESPONSE**:
@@ -65,11 +66,13 @@ Every web request and semantic classification runs inside GenLayer's nondetermin
 ### Leader Execution (`leader_fn`):
 1. Verifies exact SemVer syntax of the target node.
 2. Fetches CISA KEV, NVD CVE, and OSV sources over HTTPS.
-3. Validates CVE identity matching across all sources.
-4. Validates npm ecosystem matching in OSV.
-5. Evaluates direct exposure (if package equals primary vulnerable package) against OSV version ranges.
-6. Evaluates transitive exposure via bounded BFS graph traversal (up to depth 8) with cycle tracking.
-7. Emits structured decision object with:
+3. Recomputes the framed evidence digest and reverts on any change from the locked snapshot, leaving triage unconsumed and retryable.
+4. Validates CVE identity matching across all sources.
+5. Validates npm ecosystem matching in OSV.
+6. Evaluates direct exposure (if package equals primary vulnerable package) against OSV version ranges.
+7. Evaluates transitive exposure via bounded BFS graph traversal (up to depth 8) with cycle tracking.
+8. Uses the LLM semantic judgment as a consequence-bearing choice between the factual affected tuple and the safe `UNCERTAIN / REVIEW / INSUFFICIENT` tuple; malformed or disallowed output takes the safe branch.
+9. Emits structured decision object with:
    - `classification`: `AFFECTED | UNAFFECTED | UNCERTAIN`
    - `action`: `QUARANTINE | REVIEW | MONITOR | NO_ACTION`
    - `impact_kind`: `DIRECT | TRANSITIVE | NONE | INSUFFICIENT`

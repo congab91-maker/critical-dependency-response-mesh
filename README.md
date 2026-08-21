@@ -34,7 +34,7 @@ DISCLOSED ──► GRAPH_OPEN ──► LOCKED ──► TRIAGED ──► RESP
 
 1. **DISCLOSED**: Coordinator initializes incident with CVE ID, CISA/NVD/OSV URLs, primary vulnerable package, snapshot hash, and response deadline.
 2. **GRAPH_OPEN**: Project maintainers register project IDs, canonical npm package names, exact SemVer versions, and dependency edges.
-3. **LOCKED**: Coordinator freezes the graph; deterministic SHA-256 graph hash is computed; graph mutation is locked.
+3. **LOCKED**: Validators verify the exact framed CISA/NVD/OSV digest against the declared snapshot hash; the coordinator then freezes the graph and its deterministic SHA-256 graph hash.
 4. **TRIAGED**: Permissionless callers trigger `triage_next` for each node; validators reach consensus on direct and transitive exposure. Moves to `TRIAGED` once all nodes are processed.
 5. **RESPONSE**: Coordinator opens response phase; maintainers submit remediation acknowledgements with public PR/commit URIs and note hashes.
 6. **CLOSED**: At or after the response deadline, coordinator closes the incident; unacknowledged affected nodes are permanently recorded in the immutable unresolved cohort.
@@ -44,6 +44,7 @@ DISCLOSED ──► GRAPH_OPEN ──► LOCKED ──► TRIAGED ──► RESP
 - **Ecosystem**: npm only (canonical unscoped names or `@scope/package`).
 - **Evidence Model**: CISA KEV binds exploitation status; NVD binds CVE identity and descriptions; OSV binds affected/fixed SemVer version ranges.
 - **Canonical Sources**: Incidents accept only the canonical CISA KEV JSON feed, the NVD CVE 2.0 endpoint queried for the exact incident CVE, and an `api.osv.dev/v1/vulns/{id}` record whose structured ID or alias matches that CVE.
+- **Frozen Snapshot**: `snapshot_hash` is the SHA-256 digest of the exact UTF-8 response bytes framed as `CISA\0...\0NVD\0...\0OSV\0...`. Lock rejects malformed or mismatched content; triage reverts on later content drift so no node consumes mixed-version evidence.
 - **Maintainer Claim Graph**: The graph is explicitly a bounded maintainer claim graph for the incident (max 24 nodes, max 64 edges, max depth 8 hops). It is not an automated scanner or complete SBOM.
 - **Acknowledgement Meaning**: An acknowledgement records evidence of maintainer action; it does not certify cryptographic or functional safety of the patch.
 
