@@ -2,7 +2,7 @@
 
 ## Current checkpoint
 
-This document records the corrected deployment and the current paused `POST_DEPLOY_TEST` checkpoint. It does not claim completion of the Studio matrix, live frontend verification, GitHub release, or Vercel release.
+This document records a refreshed `PRE_DEPLOY` candidate. No deployment exists for corrected source SHA-256 `9A0DD1219504190383C0896D26A1CDB4BE9142DA940E7598B93EDA3D42FAE7C0`; both earlier deployments are retained solely as superseded failure evidence. It does not claim a current deployment, Studio matrix completion, live frontend verification, GitHub release, or Vercel release.
 
 - Submission category: `PROJECT`
 - Network target: GenLayer Studionet, chain ID `61999`

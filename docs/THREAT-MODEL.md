@@ -50,8 +50,8 @@
 ### 3.4. Mutable Evidence After Lock
 - **Threat**: Canonical sources change between graph lock and later node triage, causing one incident to mix evidence versions.
 - **Mitigation**:
-  - `lock_graph` independently derives and verifies the exact framed CISA/NVD/OSV digest against the coordinator-supplied snapshot hash.
-  - Every triage recomputes that digest. A mismatch reverts before storage writes, so the node remains untriaged and retryable against the locked evidence.
+  - `lock_graph` parses each response as JSON, serializes it with sorted keys and compact separators in UTF-8, excludes only NVD's generated top-level transport `timestamp`, and independently verifies the framed canonical CISA/NVD/OSV digest against the coordinator-supplied snapshot hash.
+  - Every triage recomputes that same canonical digest. Harmless transport formatting and the excluded NVD timestamp do not cause drift; any other mismatch reverts before storage writes, so the node remains untriaged and retryable against the locked evidence.
 
 ### 3.5. Server-Side Request Forgery (SSRF) & Insecure URLs
 - **Threat**: A coordinator inputs URLs targeting `localhost`, private IP ranges, or non-HTTPS services to probe internal validator networks.

@@ -46,7 +46,7 @@ The incident state machine transitions strictly linearly through six canonical p
    - Maintainers declare directed dependency edges (`add_dependency`) from their project to registered upstream projects.
 3. **LOCKED**:
    - Coordinator freezes the dependency graph. The contract computes a deterministic SHA-256 graph hash over all sorted nodes and edges.
-   - Validators fetch all three canonical sources and independently derive a framed evidence digest (`CISA\0<body>\0NVD\0<body>\0OSV\0<body>`). Lock succeeds only when that digest equals the incident snapshot hash; unavailable, malformed, or mismatched evidence leaves the phase `GRAPH_OPEN`.
+   - Validators fetch all three canonical sources, parse each JSON body, and serialize it deterministically as UTF-8 with sorted keys and compact separators. Only NVD's generated top-level transport `timestamp` is excluded. Validators independently derive the framed canonical digest (`CISA\0<canonical-json>\0NVD\0<canonical-json>\0OSV\0<canonical-json>`). Lock succeeds only when that digest equals the incident snapshot hash; unavailable, malformed, or mismatched evidence leaves the phase `GRAPH_OPEN`.
    - Graph mutations are permanently disabled.
 4. **TRIAGED**:
    - Anyone may permissionlessly trigger `triage_next` for registered project nodes.
@@ -66,7 +66,7 @@ Every web request and semantic classification runs inside GenLayer's nondetermin
 ### Leader Execution (`leader_fn`):
 1. Verifies exact SemVer syntax of the target node.
 2. Fetches CISA KEV, NVD CVE, and OSV sources over HTTPS.
-3. Recomputes the framed evidence digest and reverts on any change from the locked snapshot, leaving triage unconsumed and retryable.
+3. Recomputes the same framed canonical-JSON digest (sorted keys, compact separators, UTF-8, excluding only NVD's top-level transport `timestamp`) and reverts on any semantic evidence change from the locked snapshot, leaving triage unconsumed and retryable.
 4. Validates CVE identity matching across all sources.
 5. Validates npm ecosystem matching in OSV.
 6. Evaluates direct exposure (if package equals primary vulnerable package) against OSV version ranges.
