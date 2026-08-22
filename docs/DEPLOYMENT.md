@@ -19,15 +19,15 @@ No deployment or write is authorized before `PRE_DEPLOY` approval. Changing this
 - Constructor argument: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`
 - Studio account role: deployer + native upgrader
 - Linked contracts: none
-- Contract address: `0xaE316A924E2B66445E7c703A48F5a3c967Cde07E`
-- Deployment transaction: `0x2a12303ab696fc41d66008b8c6db59c6420265420f1915ac85de06077520184e`
-- Explorer link: `https://explorer-studio.genlayer.com/address/0xaE316A924E2B66445E7c703A48F5a3c967Cde07E`
-- Contract source commit: `1f381646bc81e989621324e527b3659581cb445d`
-- Contract source tree: `32ade3d654b009c32d9351f74e9e7b200706df52`
-- Contract source SHA-256: `42D03DC49B3D121A1CC0E7B374B2C08CD15A33F3BFD30BD3C4E00AFCAC9BB218`
+- Contract address: populated after refreshed approval and deployment
+- Deployment transaction: populated after refreshed approval and deployment
+- Explorer link: populated after refreshed approval and deployment
+- Contract source commit: `93cd81cd463d31226a2d9c9433d5695fc4fdace9`
+- Contract source tree: `1810e0dab5614a78ad109e18f43861029f4fc52a`
+- Contract source SHA-256: `9A0DD1219504190383C0896D26A1CDB4BE9142DA940E7598B93EDA3D42FAE7C0`
 - Packaging commit/tree: recorded in the immutable PRE_DEPLOY review envelope
 
-The corrected deployment is finalized with majority agreement and successful leader execution. Deployed-code readback matches the source SHA-256 above. This does not complete `POST_DEPLOY_TEST`; the live lifecycle matrix and isolated upgrade rehearsal remain pending.
+The current source awaits refreshed `PRE_DEPLOY` review and deployment. No deployment or later-stage approval is claimed for it.
 
 ## Storage compatibility
 
@@ -36,6 +36,8 @@ Replacement code must preserve the order and types of every persistent storage f
 ## Superseded deployment
 
 Deployment `0xfCe383f4B5554f98cc830dE6EB155E92bA67ba0C` finalized from the prior reviewed source, but live preflight proved its 128 KB evidence-body bound was smaller than the canonical CISA KEV feed. It is retained only as failure evidence and must not be wired into the frontend or presented as the release deployment.
+
+Deployment `0xaE316A924E2B66445E7c703A48F5a3c967Cde07E` finalized from the next reviewed source, but live `lock_graph` proved raw NVD/OSV response-byte hashing could not reach validator consensus because transport serialization changes between requests. It is also retained only as failure evidence and must not be wired into the frontend or presented as the release deployment.
 
 ## Required live checks
 
