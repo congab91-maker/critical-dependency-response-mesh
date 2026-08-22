@@ -71,10 +71,23 @@ SAMPLE_OSV_BODY = json.dumps({
 })
 
 def snapshot_hash(cisa=SAMPLE_CISA_BODY, nvd=SAMPLE_NVD_BODY, osv=SAMPLE_OSV_BODY):
+    def canonical(body, source):
+        try:
+            parsed = json.loads(body)
+        except json.JSONDecodeError:
+            # Malformed-body tests still need a syntactically valid supplied
+            # hash; the contract rejects the body before accepting the lock.
+            return body.encode()
+        if source == "NVD" and isinstance(parsed, dict):
+            parsed.pop("timestamp", None)
+        return json.dumps(
+            parsed, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode()
+
     return "0x" + hashlib.sha256(
-        b"CISA\x00" + cisa.encode()
-        + b"\x00NVD\x00" + nvd.encode()
-        + b"\x00OSV\x00" + osv.encode()
+        b"CISA\x00" + canonical(cisa, "CISA")
+        + b"\x00NVD\x00" + canonical(nvd, "NVD")
+        + b"\x00OSV\x00" + canonical(osv, "OSV")
     ).hexdigest()
 
 
@@ -140,6 +153,28 @@ def test_01b_canonical_cisa_feed_size_fits_bounded_limit(direct_vm, direct_deplo
     with direct_vm.prank(COORDINATOR):
         inc_id = contract.create_incident(
             CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE, large_snapshot_hash, deadline
+        )
+        contract.open_graph(inc_id)
+    with direct_vm.prank(ALICE):
+        contract.register_project(inc_id, "service-auth", PRIMARY_PACKAGE, "1.5.0")
+    with direct_vm.prank(COORDINATOR):
+        contract.lock_graph(inc_id)
+
+    assert json.loads(contract.get_incident_json(inc_id))["phase"] == "LOCKED"
+
+
+def test_01c_volatile_transport_json_still_reaches_consensus(direct_vm, direct_deploy):
+    contract = deploy_contract(direct_deploy)
+    deadline = get_future_deadline(3600)
+    nvd_at_disclosure = json.dumps({**json.loads(SAMPLE_NVD_BODY), "timestamp": "first"})
+    nvd_at_lock = json.dumps({**json.loads(SAMPLE_NVD_BODY), "timestamp": "second"}, indent=2)
+    osv_at_lock = json.dumps(json.loads(SAMPLE_OSV_BODY), indent=4)
+    stable_hash = snapshot_hash(SAMPLE_CISA_BODY, nvd_at_disclosure, SAMPLE_OSV_BODY)
+    mock_standard_sources(direct_vm, nvd=nvd_at_lock, osv=osv_at_lock)
+
+    with direct_vm.prank(COORDINATOR):
+        inc_id = contract.create_incident(
+            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE, stable_hash, deadline
         )
         contract.open_graph(inc_id)
     with direct_vm.prank(ALICE):

@@ -21,6 +21,21 @@ MAX_CISA_RESPONSE_BODY_SIZE = 2 * 1024 * 1024  # Canonical KEV feed is currently
 MAX_NVD_RESPONSE_BODY_SIZE = 256 * 1024
 MAX_OSV_RESPONSE_BODY_SIZE = 256 * 1024
 
+
+def _canonical_evidence_json(body: bytes, source: str) -> bytes:
+    """Return stable JSON bytes while excluding source transport metadata."""
+    parsed = json.loads(body.decode("utf-8"))
+    if source == "NVD" and isinstance(parsed, dict):
+        # NVD generates this response timestamp per request. It is transport
+        # metadata, not CVE content, and otherwise makes consensus impossible.
+        parsed.pop("timestamp", None)
+    return json.dumps(
+        parsed,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+
 # Valid Enums
 VALID_PHASES = {"DISCLOSED", "GRAPH_OPEN", "LOCKED", "TRIAGED", "RESPONSE", "CLOSED"}
 VALID_CLASSIFICATIONS = {"AFFECTED", "UNAFFECTED", "UNCERTAIN"}
@@ -620,12 +635,15 @@ class CriticalDependencyResponseMesh(gl.Contract):
                     raise gl.vm.UserError("Cannot lock graph: required evidence source unavailable")
                 # Validate JSON at the freeze boundary; identity is rechecked during triage.
                 try:
-                    json.loads(response.body.decode("utf-8"))
+                    canonical_body = _canonical_evidence_json(
+                        response.body,
+                        ("CISA", "NVD", "OSV")[len(bodies)],
+                    )
                 except Exception as exc:
                     raise gl.vm.UserError(
                         "Cannot lock graph: required evidence is malformed JSON"
                     ) from exc
-                bodies.append(response.body)
+                bodies.append(canonical_body)
             framed = b"CISA\x00" + bodies[0] + b"\x00NVD\x00" + bodies[1] + b"\x00OSV\x00" + bodies[2]
             return "0x" + hashlib.sha256(framed).hexdigest().lower()
 
@@ -716,9 +734,9 @@ class CriticalDependencyResponseMesh(gl.Contract):
                         "reason": f"CISA KEV source unavailable or exceeded payload limit (status {cisa_res.status})",
                     }
                 cisa_body_str = cisa_res.body.decode("utf-8", errors="replace")
-                cisa_body_bytes = cisa_res.body
                 try:
                     cisa_data = json.loads(cisa_body_str)
+                    cisa_body_bytes = _canonical_evidence_json(cisa_res.body, "CISA")
                 except Exception:
                     cisa_data = None
                 cisa_entries = []
@@ -772,9 +790,9 @@ class CriticalDependencyResponseMesh(gl.Contract):
                         "reason": f"NVD source unavailable or exceeded payload limit (status {nvd_res.status})",
                     }
                 nvd_body_str = nvd_res.body.decode("utf-8", errors="replace")
-                nvd_body_bytes = nvd_res.body
                 try:
                     nvd_data = json.loads(nvd_body_str)
+                    nvd_body_bytes = _canonical_evidence_json(nvd_res.body, "NVD")
                 except Exception:
                     nvd_data = None
                 nvd_records = []
@@ -838,9 +856,9 @@ class CriticalDependencyResponseMesh(gl.Contract):
                         "reason": f"OSV source unavailable or exceeded payload limit (status {osv_res.status})",
                     }
                 osv_body_str = osv_res.body.decode("utf-8", errors="replace")
-                osv_body_bytes = osv_res.body
                 try:
                     osv_data = json.loads(osv_body_str)
+                    osv_body_bytes = _canonical_evidence_json(osv_res.body, "OSV")
                 except Exception:
                     return {
                         "classification": "UNCERTAIN",
