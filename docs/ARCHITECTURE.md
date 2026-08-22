@@ -2,7 +2,7 @@
 
 ## 1. System Overview
 
-The **Critical Dependency Response Mesh** is an Intelligent Contract decentralized application deployed on GenLayer Studionet. It provides a neutral, tamper-resistant coordination mesh for security incidents and critical supply-chain vulnerabilities affecting multi-project software dependency graphs.
+The **Critical Dependency Response Mesh** is an Intelligent Contract decentralized application built for deployment on GenLayer Studionet. It provides a neutral, tamper-resistant coordination mesh for security incidents and critical supply-chain vulnerabilities affecting multi-project software dependency graphs.
 
 In modern software ecosystems (specifically npm), vulnerabilities often ripple through deep, interconnected dependency trees. When a critical CVE is actively exploited in the wild, project maintainers and incident coordinators face severe coordination challenges:
 - Maintainers may understate or misjudge exposure to avoid downtime or liability.
