@@ -122,6 +122,32 @@ def test_01_constructor_and_limits(direct_deploy):
     assert limits["max_edges_per_incident"] == 64
     assert limits["max_outgoing_edges_per_node"] == 8
     assert limits["max_traversal_depth"] == 8
+    assert limits["max_cisa_response_body_size"] == 2 * 1024 * 1024
+    assert limits["max_nvd_response_body_size"] == 256 * 1024
+    assert limits["max_osv_response_body_size"] == 256 * 1024
+
+
+def test_01b_canonical_cisa_feed_size_fits_bounded_limit(direct_vm, direct_deploy):
+    contract = deploy_contract(direct_deploy)
+    deadline = get_future_deadline(3600)
+    large_cisa = json.dumps({
+        "vulnerabilities": [json.loads(SAMPLE_CISA_BODY)],
+        "padding": "x" * 1_600_000,
+    })
+    large_snapshot_hash = snapshot_hash(large_cisa, SAMPLE_NVD_BODY, SAMPLE_OSV_BODY)
+    mock_standard_sources(direct_vm, cisa=large_cisa)
+
+    with direct_vm.prank(COORDINATOR):
+        inc_id = contract.create_incident(
+            CVE_ID, CISA_URL, NVD_URL, OSV_URL, PRIMARY_PACKAGE, large_snapshot_hash, deadline
+        )
+        contract.open_graph(inc_id)
+    with direct_vm.prank(ALICE):
+        contract.register_project(inc_id, "service-auth", PRIMARY_PACKAGE, "1.5.0")
+    with direct_vm.prank(COORDINATOR):
+        contract.lock_graph(inc_id)
+
+    assert json.loads(contract.get_incident_json(inc_id))["phase"] == "LOCKED"
 
 
 # 2. Incident Creation Valid and Boundaries

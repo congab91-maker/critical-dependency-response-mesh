@@ -17,7 +17,9 @@ MAX_TRAVERSAL_DEPTH = 8
 MAX_URI_LENGTH = 512
 MAX_ID_LENGTH = 96
 MAX_NOTE_HASH_LENGTH = 128
-MAX_RESPONSE_BODY_SIZE = 131072  # 128 KB limit for nondet external payloads
+MAX_CISA_RESPONSE_BODY_SIZE = 2 * 1024 * 1024  # Canonical KEV feed is currently ~1.6 MB.
+MAX_NVD_RESPONSE_BODY_SIZE = 256 * 1024
+MAX_OSV_RESPONSE_BODY_SIZE = 256 * 1024
 
 # Valid Enums
 VALID_PHASES = {"DISCLOSED", "GRAPH_OPEN", "LOCKED", "TRIAGED", "RESPONSE", "CLOSED"}
@@ -609,7 +611,12 @@ class CriticalDependencyResponseMesh(gl.Contract):
             bodies: list[bytes] = []
             for uri in (cisa_uri, nvd_uri, osv_uri):
                 response = gl.nondet.web.get(uri)
-                if response.status != 200 or response.body is None or len(response.body) > MAX_RESPONSE_BODY_SIZE:
+                source_limit = (
+                    MAX_CISA_RESPONSE_BODY_SIZE,
+                    MAX_NVD_RESPONSE_BODY_SIZE,
+                    MAX_OSV_RESPONSE_BODY_SIZE,
+                )[len(bodies)]
+                if response.status != 200 or response.body is None or len(response.body) > source_limit:
                     raise gl.vm.UserError("Cannot lock graph: required evidence source unavailable")
                 # Validate JSON at the freeze boundary; identity is rechecked during triage.
                 try:
@@ -699,7 +706,7 @@ class CriticalDependencyResponseMesh(gl.Contract):
             cisa_body_bytes = b""
             try:
                 cisa_res = gl.nondet.web.get(cisa_uri_val)
-                if cisa_res.status != 200 or cisa_res.body is None or len(cisa_res.body) > MAX_RESPONSE_BODY_SIZE:
+                if cisa_res.status != 200 or cisa_res.body is None or len(cisa_res.body) > MAX_CISA_RESPONSE_BODY_SIZE:
                     return {
                         "classification": "UNCERTAIN",
                         "action": "REVIEW",
@@ -755,7 +762,7 @@ class CriticalDependencyResponseMesh(gl.Contract):
             nvd_body_bytes = b""
             try:
                 nvd_res = gl.nondet.web.get(nvd_uri_val)
-                if nvd_res.status != 200 or nvd_res.body is None or len(nvd_res.body) > MAX_RESPONSE_BODY_SIZE:
+                if nvd_res.status != 200 or nvd_res.body is None or len(nvd_res.body) > MAX_NVD_RESPONSE_BODY_SIZE:
                     return {
                         "classification": "UNCERTAIN",
                         "action": "REVIEW",
@@ -821,7 +828,7 @@ class CriticalDependencyResponseMesh(gl.Contract):
             osv_body_bytes = b""
             try:
                 osv_res = gl.nondet.web.get(osv_uri_val)
-                if osv_res.status != 200 or osv_res.body is None or len(osv_res.body) > MAX_RESPONSE_BODY_SIZE:
+                if osv_res.status != 200 or osv_res.body is None or len(osv_res.body) > MAX_OSV_RESPONSE_BODY_SIZE:
                     return {
                         "classification": "UNCERTAIN",
                         "action": "REVIEW",
@@ -1500,5 +1507,8 @@ Respond strictly with a JSON object matching this schema:
             "max_uri_length": MAX_URI_LENGTH,
             "max_id_length": MAX_ID_LENGTH,
             "max_note_hash_length": MAX_NOTE_HASH_LENGTH,
+            "max_cisa_response_body_size": MAX_CISA_RESPONSE_BODY_SIZE,
+            "max_nvd_response_body_size": MAX_NVD_RESPONSE_BODY_SIZE,
+            "max_osv_response_body_size": MAX_OSV_RESPONSE_BODY_SIZE,
         }
         return json.dumps(data)
