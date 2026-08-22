@@ -22,14 +22,18 @@ No deployment or write is authorized before `PRE_DEPLOY` approval. Changing this
 - Contract address: populated after deployment
 - Deployment transaction: populated after deployment
 - Explorer link: populated after deployment
-- Contract source commit: `ab252af64c8b45182ebb2820dfd37f47f958dab4`
-- Contract source tree: `d696b4e3d9b7c6c9da6825b494baf65e9f8c7d2d`
-- Contract source SHA-256: `48FBA3FFA0E1764477D2336E85A03D3E5772857DDEB6899047E7EC2912FEBFAD`
+- Contract source commit: `1f381646bc81e989621324e527b3659581cb445d`
+- Contract source tree: `32ade3d654b009c32d9351f74e9e7b200706df52`
+- Contract source SHA-256: `42D03DC49B3D121A1CC0E7B374B2C08CD15A33F3BFD30BD3C4E00AFCAC9BB218`
 - Packaging commit/tree: recorded in the immutable PRE_DEPLOY review envelope
 
 ## Storage compatibility
 
 Replacement code must preserve the order and types of every persistent storage field. Reordering, removing or changing a storage field requires a separately reviewed migration plan and fresh live verification.
+
+## Superseded deployment
+
+Deployment `0xfCe383f4B5554f98cc830dE6EB155E92bA67ba0C` finalized from the prior reviewed source, but live preflight proved its 128 KB evidence-body bound was smaller than the canonical CISA KEV feed. It is retained only as failure evidence and must not be wired into the frontend or presented as the release deployment.
 
 ## Required live checks
 

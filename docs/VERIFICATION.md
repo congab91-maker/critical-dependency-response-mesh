@@ -9,9 +9,9 @@ This document records pre-deployment evidence only. It does not claim a Studione
 - Contract: `contracts/critical_dependency_response_mesh.py`
 - Deployment classification: `UPGRADABLE`
 - Locked Studio deployer/upgrader: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`
-- Contract source commit: `ab252af64c8b45182ebb2820dfd37f47f958dab4`
-- Contract source tree: `d696b4e3d9b7c6c9da6825b494baf65e9f8c7d2d`
-- Contract source SHA-256: `48FBA3FFA0E1764477D2336E85A03D3E5772857DDEB6899047E7EC2912FEBFAD`
+- Contract source commit: `1f381646bc81e989621324e527b3659581cb445d`
+- Contract source tree: `32ade3d654b009c32d9351f74e9e7b200706df52`
+- Contract source SHA-256: `42D03DC49B3D121A1CC0E7B374B2C08CD15A33F3BFD30BD3C4E00AFCAC9BB218`
 
 The immutable anonymous-review package envelope records the exact packaging commit and tree. They are intentionally not embedded here because a Git commit cannot contain its own hash. The source identifiers above bind the unchanged contract implementation reviewed for deployment.
 
@@ -22,7 +22,7 @@ Executed on 2026-08-22:
 ```text
 python -m pip check                         PASS — No broken requirements found
 genvm-lint contracts/...py                 PASS — 3 checks
-python -m pytest -p no:cacheprovider -q    PASS — 28 tests
+python -m pytest -p no:cacheprovider -q    PASS — 29 tests
 npm run typecheck                          PASS — 0 errors
 npm run test -- --run                      PASS — 4 files, 28 tests
 npm run build                              PASS — production build generated
@@ -44,7 +44,7 @@ Local browser inspection confirmed:
 
 ## Live evidence status
 
-Studionet contract address, deployment transaction, Explorer links, Studio matrix and live frontend evidence are intentionally absent until their governed stages. Local and mocked tests do not substitute for those artifacts.
+The earlier exact-source deployment at `0xfCe383f4B5554f98cc830dE6EB155E92bA67ba0C` finalized successfully, but live preflight found that the canonical CISA KEV feed exceeded the prior 128 KB application bound. That deployment is superseded and is not a release candidate. A fresh `PRE_DEPLOY` approval and deployment are required for the corrected source above. Studio matrix and live frontend evidence remain incomplete; local and mocked tests do not substitute for those artifacts.
 
 ## Known limitations
 
