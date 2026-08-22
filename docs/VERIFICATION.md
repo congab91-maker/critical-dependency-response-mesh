@@ -9,9 +9,11 @@ This document records pre-deployment evidence only. It does not claim a Studione
 - Contract: `contracts/critical_dependency_response_mesh.py`
 - Deployment classification: `UPGRADABLE`
 - Locked Studio deployer/upgrader: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`
-- Reviewed commit: `ab252af64c8b45182ebb2820dfd37f47f958dab4`
-- Reviewed tree: `d696b4e3d9b7c6c9da6825b494baf65e9f8c7d2d`
+- Contract source commit: `ab252af64c8b45182ebb2820dfd37f47f958dab4`
+- Contract source tree: `d696b4e3d9b7c6c9da6825b494baf65e9f8c7d2d`
 - Contract source SHA-256: `48FBA3FFA0E1764477D2336E85A03D3E5772857DDEB6899047E7EC2912FEBFAD`
+
+The immutable anonymous-review package envelope records the exact packaging commit and tree. They are intentionally not embedded here because a Git commit cannot contain its own hash. The source identifiers above bind the unchanged contract implementation reviewed for deployment.
 
 ## Independent local verification
 
@@ -25,7 +27,7 @@ npm run typecheck                          PASS — 0 errors
 npm run test -- --run                      PASS — 4 files, 28 tests
 npm run build                              PASS — production build generated
 git diff --check                           PASS
-git status --porcelain                     PASS — clean at reviewed commit
+git status --porcelain                     PASS — clean when the review package was created
 ```
 
 The Vite build reports one non-blocking bundle-size warning for the GenLayer/viem client bundle. No runtime dependency is installed to suppress it.

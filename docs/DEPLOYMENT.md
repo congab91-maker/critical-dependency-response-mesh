@@ -22,7 +22,10 @@ No deployment or write is authorized before `PRE_DEPLOY` approval. Changing this
 - Contract address: populated after deployment
 - Deployment transaction: populated after deployment
 - Explorer link: populated after deployment
-- Exact Git commit and source SHA-256: locked in the PRE_DEPLOY package
+- Contract source commit: `ab252af64c8b45182ebb2820dfd37f47f958dab4`
+- Contract source tree: `d696b4e3d9b7c6c9da6825b494baf65e9f8c7d2d`
+- Contract source SHA-256: `48FBA3FFA0E1764477D2336E85A03D3E5772857DDEB6899047E7EC2912FEBFAD`
+- Packaging commit/tree: recorded in the immutable PRE_DEPLOY review envelope
 
 ## Storage compatibility
 
@@ -30,7 +33,7 @@ Replacement code must preserve the order and types of every persistent storage f
 
 ## Required live checks
 
-After deployment, acceptance requires `FINALIZED`, consensus success, execution success, matching deployer/origin, authoritative contract readback, deployed-source parity and the complete user-executed Studio matrix. A separate test deployment must be used for the safe upgrade rehearsal.
+After deployment, acceptance requires `FINALIZED`, consensus success, execution success, matching deployer/origin, authoritative contract readback, deployed-source parity and the complete primary-AI-executed Studio matrix. A separate test deployment must be used for the safe upgrade rehearsal.
 
 ## Recovery limits and runbook
 
