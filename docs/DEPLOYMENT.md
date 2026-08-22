@@ -6,7 +6,7 @@
 
 The Studio account below is locked for anonymous `PRE_DEPLOY` review. It will serve as both deployer and native upgrader:
 
-`0x0d4b860b08b9fba6cf1d928c4a19863176ead563`
+`0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`
 
 No deployment or write is authorized before `PRE_DEPLOY` approval. Changing this account invalidates that approval and requires a refreshed review.
 
@@ -16,7 +16,7 @@ No deployment or write is authorized before `PRE_DEPLOY` approval. Changing this
 - Chain ID: `61999`
 - RPC: `https://studio.genlayer.com/api`
 - Contract source: `contracts/critical_dependency_response_mesh.py`
-- Constructor argument: `0x0d4b860b08b9fba6cf1d928c4a19863176ead563`
+- Constructor argument: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`
 - Studio account role: deployer + native upgrader
 - Linked contracts: none
 - Contract address: populated after deployment
