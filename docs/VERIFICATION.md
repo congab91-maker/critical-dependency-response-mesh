@@ -2,7 +2,7 @@
 
 ## Current checkpoint
 
-This document records pre-deployment evidence only. It does not claim a Studionet deployment, live contract verification, GitHub release, or Vercel release.
+This document records the corrected deployment and the current paused `POST_DEPLOY_TEST` checkpoint. It does not claim completion of the Studio matrix, live frontend verification, GitHub release, or Vercel release.
 
 - Submission category: `PROJECT`
 - Network target: GenLayer Studionet, chain ID `61999`
@@ -44,7 +44,25 @@ Local browser inspection confirmed:
 
 ## Live evidence status
 
-The earlier exact-source deployment at `0xfCe383f4B5554f98cc830dE6EB155E92bA67ba0C` finalized successfully, but live preflight found that the canonical CISA KEV feed exceeded the prior 128 KB application bound. That deployment is superseded and is not a release candidate. A fresh `PRE_DEPLOY` approval and deployment are required for the corrected source above. Studio matrix and live frontend evidence remain incomplete; local and mocked tests do not substitute for those artifacts.
+Anonymous review returned `PRE_DEPLOY: APPROVED` for packaging commit `6b2cfdf7f75d29a03920a8ef49c327d62a6c1eb4`, tree `b1b6fa6badea8c551cd9cdbf95a001d6decdeb79`, and the corrected source identifiers above.
+
+Corrected Studionet deployment:
+
+- Contract: `0xaE316A924E2B66445E7c703A48F5a3c967Cde07E`
+- Deployment transaction: `0x2a12303ab696fc41d66008b8c6db59c6420265420f1915ac85de06077520184e`
+- Deployer/upgrader: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`
+- Receipt: `FINALIZED`
+- Consensus: `MAJORITY_AGREE`
+- Leader execution: `SUCCESS`
+- Validator votes observed: `IDLE, AGREE, AGREE, IDLE, AGREE`
+- Deployed code size: `67700` characters
+- Deployed code SHA-256: exact match to `42D03DC49B3D121A1CC0E7B374B2C08CD15A33F3BFD30BD3C4E00AFCAC9BB218`
+- `get_limits_json`: CISA `2097152`, NVD `262144`, OSV `262144`
+- `get_upgrade_status_json`: upgradable, recorded upgrader matches the locked account
+
+The earlier deployment at `0xfCe383f4B5554f98cc830dE6EB155E92bA67ba0C` remains superseded because its 128 KB evidence-body bound was smaller than the canonical CISA KEV feed.
+
+The primary-AI Studio matrix is not complete and no `POST_DEPLOY_TEST` verdict has been requested. Work paused on 2026-08-23 at the user's request after Studio returned `Rate limit exceeded: 500 requests per hour`; the response reported `current: 500` and a retry interval. After the window reset, Studio briefly showed 20 validators, then subsequent route reloads reported zero validators and disabled contract interaction. No matrix write was submitted, and incident count/state was therefore not advanced by this attempt. Resume by confirming the locked account, restoring a non-zero validator set in a read-only Studio view, then execute the planned matrix against the corrected deployment. Local and mocked tests do not substitute for those live artifacts.
 
 ## Known limitations
 

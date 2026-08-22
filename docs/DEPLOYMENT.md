@@ -19,13 +19,15 @@ No deployment or write is authorized before `PRE_DEPLOY` approval. Changing this
 - Constructor argument: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`
 - Studio account role: deployer + native upgrader
 - Linked contracts: none
-- Contract address: populated after deployment
-- Deployment transaction: populated after deployment
-- Explorer link: populated after deployment
+- Contract address: `0xaE316A924E2B66445E7c703A48F5a3c967Cde07E`
+- Deployment transaction: `0x2a12303ab696fc41d66008b8c6db59c6420265420f1915ac85de06077520184e`
+- Explorer link: `https://explorer-studio.genlayer.com/address/0xaE316A924E2B66445E7c703A48F5a3c967Cde07E`
 - Contract source commit: `1f381646bc81e989621324e527b3659581cb445d`
 - Contract source tree: `32ade3d654b009c32d9351f74e9e7b200706df52`
 - Contract source SHA-256: `42D03DC49B3D121A1CC0E7B374B2C08CD15A33F3BFD30BD3C4E00AFCAC9BB218`
 - Packaging commit/tree: recorded in the immutable PRE_DEPLOY review envelope
+
+The corrected deployment is finalized with majority agreement and successful leader execution. Deployed-code readback matches the source SHA-256 above. This does not complete `POST_DEPLOY_TEST`; the live lifecycle matrix and isolated upgrade rehearsal remain pending.
 
 ## Storage compatibility
 
