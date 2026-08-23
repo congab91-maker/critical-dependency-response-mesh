@@ -81,8 +81,14 @@ export class MeshTransactionService {
       if (!['SUCCESS', 'AGREE', 'MAJORITY_AGREE', '1', '6'].includes(String(consensusResult))) {
         throw new Error(`Consensus result was not successful (result: ${String(consensusResult)})`);
       }
-      const executionResult = receipt.txExecutionResultName ?? receipt.txExecutionResult;
-      if (String(executionResult) !== 'FINISHED_WITH_RETURN' && String(executionResult) !== '1') {
+      const receiptEnvelope = receipt as any;
+      const leaderReceipt = receiptEnvelope.consensus_data?.leader_receipt?.[0];
+      const executionResult =
+        receipt.txExecutionResultName ??
+        receipt.txExecutionResult ??
+        leaderReceipt?.execution_result ??
+        leaderReceipt?.genvm_result;
+      if (!['SUCCESS', 'FINISHED_WITH_RETURN', '1'].includes(String(executionResult))) {
         throw new Error(
           `Contract execution failed (execution: ${String(executionResult)})`
         );

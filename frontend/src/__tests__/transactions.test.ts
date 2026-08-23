@@ -86,6 +86,21 @@ describe('MeshTransactionService Protocol and Finality', () => {
     });
   });
 
+  it('accepts successful execution from the simplified live leader receipt envelope', async () => {
+    mockClient.waitForTransactionReceipt.mockResolvedValueOnce({
+      status: 7,
+      result: 6,
+      consensus_data: {
+        leader_receipt: [{ execution_result: 'SUCCESS' }],
+      },
+    });
+
+    await expect(meshTransactions.openGraph(mockProvider, mockAccount, 3)).resolves.toMatchObject({
+      hash: mockTxHash,
+      status: 'FINALIZED',
+    });
+  });
+
   it('executes open_graph write', async () => {
     const receipt = await meshTransactions.openGraph(mockProvider, mockAccount, 1);
     expect(receipt.status).toBe('FINALIZED');
