@@ -363,6 +363,13 @@ export const App: React.FC = () => {
         throw new Error(`Finalized transaction readback did not confirm triage for ${projectId}.`);
       }
       applyGraphReadback(readback);
+      if (readback.nodes.every((node) => node.has_triage)) {
+        const incidentReadback = await meshRepository.getIncident(incidentId);
+        if (!incidentReadback || incidentReadback.phase !== 'TRIAGED') {
+          throw new Error('Finalized transaction readback did not confirm TRIAGED lifecycle state.');
+        }
+        applyIncidentReadback(incidentReadback);
+      }
       setStatusMessage(`Validator triage consensus reached and verified for ${projectId}.`);
     } catch (err: any) {
       setStatusMessage(null);
