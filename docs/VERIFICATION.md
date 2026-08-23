@@ -12,7 +12,7 @@ Release publication and wallet E2E are complete; final anonymous review remains 
 - Deployed frontend source tree: `feac8285c5a707bbed0513146ed53bbe3618c0be`
 - Live app: `https://critical-dependency-response-mesh.vercel.app`
 - Vercel project: `brunogg/critical-dependency-response-mesh`
-- Production deployment: `dpl_B6zpM7KF9khPUJSGEocM3FdzSyDN` (`READY`)
+- Final packaging deployment: `dpl_8joW11ue9WNDYqTFZs5MEdSbr5KB` (`READY`), byte-identical frontend bundle to deployed frontend source commit above
 - Production bundle check: correct contract/RPC and visible per-second local countdown; deadline-gated close; truthful transient-read loading state; graph/table; exact EIP-6963 OKX routing; reload disconnected
 - User wallet E2E: PASS through incident #3 `DISCLOSED → GRAPH_OPEN → LOCKED → TRIAGED → RESPONSE → CLOSED`; final anonymous approval remains pending
 
