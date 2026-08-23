@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Incident, IncidentGraph } from '../genlayer/types';
 import { useWallet } from '../wallet/WalletContext';
 
@@ -24,6 +24,9 @@ interface OperationalRailProps {
   ) => Promise<void>;
   isSubmitting: boolean;
 }
+
+export const isResponseWindowElapsed = (deadline: number, now = Date.now()) =>
+  now >= deadline * 1000;
 
 export const OperationalRail: React.FC<OperationalRailProps> = ({
   incident,
@@ -58,6 +61,13 @@ export const OperationalRail: React.FC<OperationalRailProps> = ({
   const [ackProjectId, setAckProjectId] = useState('');
   const [ackUri, setAckUri] = useState('');
   const [ackNoteHash, setAckNoteHash] = useState('');
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!incident || incident.phase !== 'RESPONSE' || isResponseWindowElapsed(incident.response_deadline, now)) return;
+    const timer = window.setTimeout(() => setNow(Date.now()), Math.min(incident.response_deadline * 1000 - now + 100, 60_000));
+    return () => window.clearTimeout(timer);
+  }, [incident, now]);
 
   if (!incident) {
     return (
@@ -234,24 +244,14 @@ export const OperationalRail: React.FC<OperationalRailProps> = ({
                 )}
 
                 {incident.phase === 'TRIAGED' && (
-                  <div className="lifecycle-button-group">
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-block"
-                      disabled={isSubmitting}
-                      onClick={() => onBeginResponse(incident.incident_id)}
-                    >
-                      🚀 Begin Response Window (Advance to RESPONSE)
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-quarantine btn-block"
-                      disabled={isSubmitting}
-                      onClick={() => onCloseIncident(incident.incident_id)}
-                    >
-                      Close Lifecycle & Seal Unresolved
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-block"
+                    disabled={isSubmitting}
+                    onClick={() => onBeginResponse(incident.incident_id)}
+                  >
+                    🚀 Begin Response Window (Advance to RESPONSE)
+                  </button>
                 )}
 
                 {incident.phase === 'RESPONSE' && (
@@ -264,10 +264,12 @@ export const OperationalRail: React.FC<OperationalRailProps> = ({
                     <button
                       type="button"
                       className="btn btn-quarantine btn-block"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !isResponseWindowElapsed(incident.response_deadline, now)}
                       onClick={() => onCloseIncident(incident.incident_id)}
                     >
-                      Close Lifecycle & Seal Unresolved
+                      {isResponseWindowElapsed(incident.response_deadline, now)
+                        ? 'Close Lifecycle & Seal Unresolved'
+                        : 'Close available after response deadline'}
                     </button>
                   </div>
                 )}

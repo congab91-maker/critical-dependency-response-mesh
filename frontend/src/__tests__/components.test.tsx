@@ -4,7 +4,7 @@ import { WalletProvider } from '../wallet/WalletContext';
 import { Header } from '../components/Header';
 import { IncidentSummary } from '../components/IncidentSummary';
 import { GraphWorkspace } from '../components/GraphWorkspace';
-import { OperationalRail } from '../components/OperationalRail';
+import { isResponseWindowElapsed, OperationalRail } from '../components/OperationalRail';
 import { UnresolvedDashboard } from '../components/UnresolvedDashboard';
 import { Footer } from '../components/Footer';
 import { Incident, IncidentGraph, IncidentSummary as IncidentSummaryType } from '../genlayer/types';
@@ -228,6 +228,11 @@ describe('Frontend UI Components', () => {
     );
 
     expect(screen.getByText('Operational Rail')).toBeInTheDocument();
+  });
+
+  it('allows closure only when the response deadline has elapsed', () => {
+    expect(isResponseWindowElapsed(1_000, 999_999)).toBe(false);
+    expect(isResponseWindowElapsed(1_000, 1_000_000)).toBe(true);
   });
 
   it('renders Footer with GenLayer Studionet details', () => {
