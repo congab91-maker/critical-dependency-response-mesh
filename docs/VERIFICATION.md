@@ -11,7 +11,9 @@ Release publication now exists, but the mandatory user-executed wallet E2E and f
 - Published source tree: `39b5a7caddec62bb3291d4eda4155490b9fa2d79`
 - Live app: `https://critical-dependency-response-mesh.vercel.app`
 - Vercel project: `brunogg/critical-dependency-response-mesh`
-- Production deployment: `dpl_6dezBzz3G6VC3EowRgGbpo792JUB` (`READY`)
+- Deployed frontend source commit: `0f8ebba7d37aacdc4b335dfde9120b8331487a30`
+- Production deployment: `dpl_DFxpD7J1XK6p9Bw6cjybdQz9bJ4u` (`READY`)
+- Production bundle check: correct contract/RPC rendered; truthful slow-read loading state; both live incidents and graph loaded; wallet chooser/no-provider path passed; reload returned disconnected; no browser console warnings/errors
 - User wallet E2E: pending; no final release approval is claimed
 
 - Submission category: `PROJECT`
