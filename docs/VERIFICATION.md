@@ -48,30 +48,69 @@ Local browser inspection confirmed:
 - with no supported injected provider, the chooser reports that state without initiating a connection;
 - a reload starts disconnected.
 
-## Live Studionet proof matrix
+## Live Studionet transaction ledger
 
 Anonymous review returned `PRE_DEPLOY: APPROVED` for the exact source identifiers above and packaging commit `3c7d7a6767a014b4d860fdba593336f927e19faa`, tree `58b45ee71ae57445417931e972d166d2b6a856bb`. The locked Studio account then deployed and operated the current contract.
 
-All rows below were inspected on Explorer or through allowlisted RPC fields. Successful rows are `FINALIZED / MAJORITY_AGREE / SUCCESS`; expected rejection rows are `FINALIZED / MAJORITY_AGREE / ERROR` with unchanged authoritative state.
+Every attempted required Studio transaction is recorded below, including setup writes, expected negative controls, malformed CLI attempts and retries. Each transaction was independently read through Studionet RPC and/or Explorer. `F/A/S` means `FINALIZED / MAJORITY_AGREE / SUCCESS`; `F/A/E` means `FINALIZED / MAJORITY_AGREE / ERROR`. An expected rejection is a test PASS only when authoritative state readback is unchanged.
 
-| Proof purpose | Actor/method | Transaction | Authoritative result |
-|---|---|---|---|
-| Exact-source deployment | locked deployer / constructor | `0x2fd647ea2cfa1ca6116b4e28d8626db668396a2f3cc7e6c20ecbd08d601c9d2f` | Source hash/size and native upgrader match the reviewed package |
-| Five-node graph and cycle handling | coordinator + three maintainers | Explorer history on current contract | Incident 1 locked with 5 nodes, 3 edges and a two-node cycle |
-| Unauthorized graph mutation | non-maintainer / `add_dependency` | `0x4dd03d431395755dcd1b9bb78870c0f550db4842c98d16c94a9cf6245ca70123` | Rejected; locked graph later retained the authorized topology |
-| Canonical external snapshot consensus | coordinator / `lock_graph(1)` | `0x85b6823f206639235b2f090bd6f4194fd61aa4a6c29a9e45a3f11c0231e152be` | Graph `LOCKED`; canonical source hash reached consensus |
-| Direct/transitive/safe/cycle triage | registered maintainers / `triage_next` | `0xaedec4d0e8caa1855279f628f6adaeeeadaf5a30499e471c0cf69500d647a762`, `0x9506ef6e13a7519073ab4b8b14af6f5386d61bd5509c76671998d5a4edc4de6d`, `0x4f45c1570955467ca014f47294a4636fbf326b04a30eec13ecc82d0b6e50784d`, `0xdb0d38af8357cb4a0ba1edf1de422d424ce6fc79565527221add66b60a459230`, `0x9abc666858d2be00e0bd03692d918a382527bc6d4d314068cbfaf19a0c57c5c2` | Four definitive `UNAFFECTED/NO_ACTION` outcomes and one safe `UNCERTAIN/REVIEW/INSUFFICIENT` |
-| Response transition | coordinator / `begin_response(1)` | `0x26b480fd087df917fa88088033e7f3b08bdd2d81ef76203da05affeb465700e2` | Incident 1 phase `RESPONSE` |
-| Deadline boundary | coordinator / early `close_incident(1)` | `0xa8b8fab499dbc19c8c4c9305ef04e6ea160e285dc9aeda7585b23f2d32603dd6` | Rejected: response deadline not elapsed; phase stayed `RESPONSE` |
-| Authorized remediation acknowledgement | cycle-b maintainer | `0xb0367d3d1b5002d37093020814559d3be01c7767d47c81c00a9660ad0f396775` | Acknowledgement readback binds caller, URI and note hash |
-| Replay prevention | same maintainer, repeated acknowledgement | `0xbfd7dcce04b109f0996f8e89dc6f048b37cb6090b3bf97b147caaf864bfbf2bd` | Rejected as already acknowledged; first record unchanged |
-| Affected direct package | maintainer / `triage_next(2, affected)` | `0x4a6e6cded2fd70cbda3c4490f2abc9f792fdf0cc5f584b7da0dd9ea95bbfeb59` | `AFFECTED / QUARANTINE / DIRECT / HIGH` |
-| Safe downstream uncertainty | maintainer / `triage_next(2, downstream)` | `0xeae036cd3b7bb82db32514b515d2d1bf24786a4673c55279435f2b1b96f81ae0` | `UNCERTAIN / REVIEW / INSUFFICIENT / LOW` |
-| Unauthorized acknowledgement | wrong maintainer | `0x2bee48abff748effaed07cbfaf7037d07a3a515c370e19db4888f056083f0901` | Rejected; no acknowledgement created |
-| Authorized direct remediation | affected maintainer | `0x79c4e01aa61a52e872e63f0db19b73ab325493c1124063d485a31cf4e9eeecc6` | Acknowledgement readback matches maintainer and evidence |
-| Closure with frozen unresolved cohort | coordinator / `close_incident(2)` | `0xdbd6e2671bf36d03a9e0c304685ba4da99bccd62f1fe2ea040988e056429e09b` | Incident `CLOSED`; unresolved count 1 containing only `downstream` |
+Exact aliases used in every row:
 
-Two diagnostic transactions are retained explicitly: `0x98421d2988db4998951db64c27b994fc68d0eefa52d8ed1d50a8ffb7e6e322d6` and `0x28bf27568cebbee204fad36778e332ae1dc821ad2a14c65f349c2123880deb08` rolled back because the CLI interpreted an unprefixed `0x...` string argument as an integer. Corrected transactions use the CLI `str:` prefix and are listed above. They are not counted as successful proof.
+- `MAIN` = `0x671Fe675c98690068f822a6a51DA7c639CAC0ce3`; `ISO` = `0x7864D0551a3C90448170C039CB566f1DbB37C3b7`.
+- `SRC` = exact 68,518-byte contract source with SHA-256 `9A0DD1219504190383C0896D26A1CDB4BE9142DA940E7598B93EDA3D42FAE7C0`.
+- `C` (coordinator/deployer/upgrader) = `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`; `A` = `0x1e92a89a414d0e1c9536810c95454dc7e767aafa`; `B` = `0x32edace6602b4594f6b2661e27ea1fa7fe7a9487`; `D` = `0x67e0d5971d5bf8b5b0ab8eb7a78be893f68fa713`; `X` (unauthorized upgrader) = `0xf5c66e5155a62e27047ad4cce729593d6b9c03fc`.
+- `EVID` = (`CVE-2025-54313`, `https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json`, `https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2025-54313`, `https://api.osv.dev/v1/vulns/GHSA-f29h-pxvx-f335`, `eslint-config-prettier`, snapshot `0xa657633a847f4e359022394644eca8bb654c963c66070881b501ae770ddb6d8a`).
+- `ACK1` = (`cycle-b`, `https://example.com/remediation/cve-2025-54313/cycle-b`, `0x1f8e2da38cfcfbe1bf11a0a42d324ee10bcc293511507067cc1f52c2eaa9af25`); `ACK2` = (`affected`, `https://example.com/remediation/cve-2025-54313/affected`, `0x6c386a24123de2eb0d9ffbfbfff56c0da7fc5cd005b5b39a0f0e738e86eafe3d`).
+
+| ID | Contract / actor | Exact call arguments | Expected | Transaction / lifecycle | Authoritative pre → post readback; actual | Verdict |
+|---|---|---|---|---|---|---|
+| D00 | MAIN/SRC · C | deploy(`SRC`, upgrader=`C`) | deploy exact package | `0x2fd647ea2cfa1ca6116b4e28d8626db668396a2f3cc7e6c20ecbd08d601c9d2f` · F/A/S | absent → code SHA/size exact; upgrader=`C` | PASS |
+| I1-01 | MAIN/SRC · C | create_incident(`EVID`, deadline=`1788029137`) | incident 1 | `0x508f785f59642c22a5c89e4911df9d8858cf48272a9e599ec6dcc57a071574c4` · F/A/S | incident_count 0→1; phase `DISCLOSED` | PASS |
+| I1-02 | MAIN/SRC · C | open_graph(1) | open graph | `0x713090c55422c0531020bd961239dec72d57219e50c41fbd01ba84b05e7d6205` · F/A/S | `DISCLOSED`→`GRAPH_OPEN` | PASS |
+| I1-03 | MAIN/SRC · A | register_project(1,`direct`,`eslint-config-prettier`,`10.1.8`) | add node | `0x9fb36bccdee8415d36412df3c5c7815e5c7767ba3d6c466a0f6582bab117f5ab` · F/A/S | projects 0→1; owner A | PASS |
+| I1-04 | MAIN/SRC · B | register_project(1,`transitive`,`consumer-app`,`1.0.0`) | add node | `0x8237322262da7c60515df9ca257582b9ce4a0a4a499fdde4f55323c66bef3e82` · F/A/S | projects 1→2; owner B | PASS |
+| I1-05 | MAIN/SRC · D | register_project(1,`safe`,`left-pad`,`1.3.0`) | add node | `0xd3febd9e2529d20f8cf1fd9ffd156c2e40c3924ca911378c7a0142c7b77c52a5` · F/A/S | projects 2→3; owner D | PASS |
+| I1-06 | MAIN/SRC · A | register_project(1,`cycle-a`,`cycle-a-package`,`1.0.0`) | add node | `0xf33f30265c4a645efafae08497265056183bf7d75be9ba9fa41fa9b399e3699e` · F/A/S | projects 3→4; owner A | PASS |
+| I1-07 | MAIN/SRC · B | register_project(1,`cycle-b`,`cycle-b-package`,`1.0.0`) | add node | `0x09e2fe0588e8065158b7e039bbb0078ac68cb922f37eb439e3223b78cf0f4fe5` · F/A/S | projects 4→5; owner B | PASS |
+| I1-08 | MAIN/SRC · A | register_project(1,`cycle-a`,`cycle-a-package`,`1.0.0`) | owner update/idempotent count | `0xc1fc2779db9276b8d21e54f11f6219f598d6b971a0bbb92a89d893bef7f03160` · F/A/S | projects 5→5; claim unchanged | PASS |
+| I1-09 | MAIN/SRC · B | add_dependency(1,`transitive`,`direct`) | add edge | `0x8bce7de0ec981fce8e07c6bfd1f735edf24331f5acd84ae1ac0ad9e1000e17e1` · F/A/S | edges 0→1 | PASS |
+| I1-10 | MAIN/SRC · A | add_dependency(1,`cycle-a`,`cycle-b`) | add edge | `0xe2e3dab3c39557a75c5cda2feef04b1b8d9584a9c676cfcdf54d3e9474012147` · F/A/S | edges 1→2 | PASS |
+| I1-11 | MAIN/SRC · B | add_dependency(1,`cycle-b`,`cycle-a`) | add edge/cycle | `0x1a0e8b230c6cbcd3b0dccb9db6818aebba68682518a29c3f1fbdc3ddaf4cab37` · F/A/S | edges 2→3; cycle frozen later | PASS |
+| I1-12 | MAIN/SRC · D | add_dependency(1,`transitive`,`safe`) | reject non-owner | `0x4dd03d431395755dcd1b9bb78870c0f550db4842c98d16c94a9cf6245ca70123` · F/A/E | edges 3→3; unauthorized source maintainer | PASS |
+| I1-13 | MAIN/SRC · C | open_graph(1) | reject repeated transition | `0xef836a68e9836591a12a2ed7eadfe19b598f82efad7dd163c70addb799e58bcb` · F/A/E | phase `GRAPH_OPEN`→unchanged | PASS |
+| I1-14 | MAIN/SRC · C | lock_graph(1) | canonical evidence lock | `0x85b6823f206639235b2f090bd6f4194fd61aa4a6c29a9e45a3f11c0231e152be` · F/A/S | phase `GRAPH_OPEN`→`LOCKED`; 5 nodes/3 edges | PASS |
+| I1-15 | MAIN/SRC · A | triage_next(1,`direct`) | direct safe classification | `0xaedec4d0e8caa1855279f628f6adaeeeadaf5a30499e471c0cf69500d647a762` · F/A/S | triaged 0→1; `UNAFFECTED/NO_ACTION` | PASS |
+| I1-16 | MAIN/SRC · B | triage_next(1,`transitive`) | transitive safe classification | `0x9506ef6e13a7519073ab4b8b14af6f5386d61bd5509c76671998d5a4edc4de6d` · F/A/S | triaged 1→2; `UNAFFECTED/NO_ACTION` | PASS |
+| I1-17 | MAIN/SRC · D | triage_next(1,`safe`) | unrelated safe classification | `0x4f45c1570955467ca014f47294a4636fbf326b04a30eec13ecc82d0b6e50784d` · F/A/S | triaged 2→3; `UNAFFECTED/NO_ACTION` | PASS |
+| I1-18 | MAIN/SRC · A | triage_next(1,`cycle-a`) | cycle terminates | `0xdb0d38af8357cb4a0ba1edf1de422d424ce6fc79565527221add66b60a459230` · F/A/S | triaged 3→4; `UNAFFECTED/NO_ACTION` | PASS |
+| I1-19 | MAIN/SRC · B | triage_next(1,`cycle-b`) | safe insufficiency | `0x9abc666858d2be00e0bd03692d918a382527bc6d4d314068cbfaf19a0c57c5c2` · F/A/S | triaged 4→5; phase `TRIAGED`; `UNCERTAIN/REVIEW/INSUFFICIENT` | PASS |
+| I1-20 | MAIN/SRC · C | begin_response(0) | reject missing incident | `0x2c0d4062f7dd021cf7bf19b3b8e1b7f09a1146bb2f684dd0f228782abedc816b` · F/A/E | incident 1 remains `TRIAGED`; “Incident does not exist” | PASS |
+| I1-21 | MAIN/SRC · D | acknowledge_action(1,`cycle-b`,`https://github.com/genlayerlabs/genlayer-js/commit/0000000000000000000000000000000000000000`, integer `77194726158210796949047323339125271902179989777093709359638389338608753093290`) | diagnostic rejection | `0xc27fe51add2c9e94c5a3fdba6b21652064bce4f575daf81c372b39be0754cc65` · F/A/E | phase remains `TRIAGED`; no acknowledgement | PASS |
+| I1-22 | MAIN/SRC · B | acknowledge_action(1,`cycle-b`,`https://github.com/genlayerlabs/genlayer-js/commit/1111111111111111111111111111111111111111`, integer `84914198774031876643952055673037799092397988754803080295602228272469628402619`) | diagnostic rejection | `0x60767a2b30349785619cb5314617820488aa94a835faf701c4b61a38ce35afb3` · F/A/E | phase remains `TRIAGED`; no acknowledgement | PASS |
+| I1-23 | MAIN/SRC · B | acknowledge_action(1,`cycle-b`,`https://github.com/genlayerlabs/genlayer-js/commit/2222222222222222222222222222222222222222`, integer `92633671389852956338856788006950326282615987732512451231566067206330503711948`) | diagnostic rejection | `0x33a92fb5464142eeae28cf470dbf2e152c1f9afdf7752301b59310b4f39bf5b3` · F/A/E | phase remains `TRIAGED`; no acknowledgement | PASS |
+| I1-24 | MAIN/SRC · C | close_incident(0) | reject missing incident | `0x758150186fe48852d91f6b362af55e6b6480361502b08bcea1d226b3a2bb19bf` · F/A/E | incident 1 unchanged; “Incident does not exist” | PASS |
+| I2-01 | MAIN/SRC · C | create_incident(`EVID`, deadline=`1787425422`) | incident 2 | `0x2121a343b380e352b011debc6ebb60fb62c3b46ac22cde7fcf1798b1e8cc6d64` · F/A/S | incident_count 1→2; phase `DISCLOSED` | PASS |
+| I2-02 | MAIN/SRC · C | open_graph(2) | open graph | `0x0f948af92577e4ddc7767ecd74e652a2759d4d24b757e4aa039f329bae9ccd12` · F/A/S | `DISCLOSED`→`GRAPH_OPEN` | PASS |
+| I2-03 | MAIN/SRC · A | register_project(2,`affected`,`eslint-config-prettier`,`10.1.7`) | add affected node | `0x451259168e0a3862ef3446551b94b14aa28374d0acbcae856039151eea1e6621` · F/A/S | projects 0→1; owner A | PASS |
+| I2-04 | MAIN/SRC · B | register_project(2,`downstream`,`consumer-app`,`1.0.0`) | add downstream node | `0x54ed57d52eb1ddf684cf3b2b8e67c90c606a16950fddffee2fd5d7968e7d4530` · F/A/S | projects 1→2; owner B | PASS |
+| I2-05 | MAIN/SRC · B | add_dependency(2,`downstream`,`affected`) | add edge | `0xdc660bdcdc013359533ee1cdac3f8bf0781dad2edd52a63097b3538602a4cd86` · F/A/S | edges 0→1 | PASS |
+| I2-06 | MAIN/SRC · C | lock_graph(2) | canonical evidence lock | `0x2211aaa5729a59d3b44a9e7bd7d8457948094032059f7f617a40523724441e97` · F/A/S | `GRAPH_OPEN`→`LOCKED`; 2 nodes/1 edge | PASS |
+| I2-07 | MAIN/SRC · A | triage_next(2,`affected`) | affected classification | `0x4a6e6cded2fd70cbda3c4490f2abc9f792fdf0cc5f584b7da0dd9ea95bbfeb59` · F/A/S | triaged 0→1; `AFFECTED/QUARANTINE/DIRECT/HIGH` | PASS |
+| I2-08 | MAIN/SRC · A | triage_next(2,`affected`) | reject duplicate | `0x98421d2988db4998951db64c27b994fc68d0eefa52d8ed1d50a8ffb7e6e322d6` · F/A/E | triaged 1→1; already triaged | PASS |
+| I2-09 | MAIN/SRC · B | triage_next(2,`downstream`) | downstream safe insufficiency | `0xeae036cd3b7bb82db32514b515d2d1bf24786a4673c55279435f2b1b96f81ae0` · F/A/S | triaged 1→2; phase `TRIAGED`; `UNCERTAIN/REVIEW/INSUFFICIENT/LOW` | PASS |
+| I2-10 | MAIN/SRC · B | triage_next(2,`downstream`) | reject after transition | `0x74585295899ce3abdd8d4f0f581c19456ae5023bbfc40d0f77ad8a398ec866b3` · F/A/E | phase/triaged unchanged; expected `LOCKED`, got `TRIAGED` | PASS |
+| I2-11 | MAIN/SRC · C | begin_response(2) | start response | `0xbe8bcbb802a41762482da4feb717751fe50d728c09d855665be58f68d5abafc6` · F/A/S | `TRIAGED`→`RESPONSE` | PASS |
+| I2-12 | MAIN/SRC · B | acknowledge_action(2, ACK2 URI, unprefixed 0x note parsed as integer) | reject wrong maintainer/type diagnostic | `0x2bee48abff748effaed07cbfaf7037d07a3a515c370e19db4888f056083f0901` · F/A/E | acknowledged false→false; no record | PASS |
+| I2-13 | MAIN/SRC · A | acknowledge_action(2, ACK2 URI, unprefixed 0x note parsed as integer) | reject malformed type | `0x28bf27568cebbee204fad36778e332ae1dc821ad2a14c65f349c2123880deb08` · F/A/E | acknowledged false→false; “note_hash must be a string” | PASS |
+| I2-14 | MAIN/SRC · A | acknowledge_action(2,`ACK2`) | accept remediation | `0x79c4e01aa61a52e872e63f0db19b73ab325493c1124063d485a31cf4e9eeecc6` · F/A/S | acknowledged false→true; caller/URI/hash exact | PASS |
+| I2-15 | MAIN/SRC · C | close_incident(2) | close after deadline | `0xdbd6e2671bf36d03a9e0c304685ba4da99bccd62f1fe2ea040988e056429e09b` · F/A/S | `RESPONSE`→`CLOSED`; unresolved=[`downstream`] | PASS |
+| I1-25 | MAIN/SRC · C | begin_response(1) | start response | `0x26b480fd087df917fa88088033e7f3b08bdd2d81ef76203da05affeb465700e2` · F/A/S | `TRIAGED`→`RESPONSE` | PASS |
+| I1-26 | MAIN/SRC · C | close_incident(1) | reject before deadline | `0xa8b8fab499dbc19c8c4c9305ef04e6ea160e285dc9aeda7585b23f2d32603dd6` · F/A/E | `RESPONSE`→unchanged; deadline not elapsed | PASS |
+| I1-27 | MAIN/SRC · B | acknowledge_action(1,`ACK1`) | accept remediation | `0xb0367d3d1b5002d37093020814559d3be01c7767d47c81c00a9660ad0f396775` · F/A/S | cycle-b acknowledged false→true; caller/URI/hash exact | PASS |
+| I1-28 | MAIN/SRC · B | acknowledge_action(1,`ACK1`) | reject replay | `0xbfd7dcce04b109f0996f8e89dc6f048b37cb6090b3bf97b147caaf864bfbf2bd` · F/A/E | acknowledgement unchanged; already acknowledged | PASS |
+| U-01 | ISO/SRC · C | deploy(`SRC`, upgrader=`C`) | isolated rehearsal | `0x37d26ced4c1db7d8a53b13c79a08d0a356b1d4e28e5ebb83a64fd36de89de2c2` · F/A/S | absent→code SHA/size exact; upgrader=`C` | PASS |
+| U-02 | ISO/SRC · C | native upgrade(`SRC`) | authorized exact-source upgrade | `0xbe7b6454acf11e95310b33f3ed6fa6a87b58b79d5f6c97f5d83fb3d800bfcde4` · F/A/S | code SHA exact→exact; upgrader remains C | PASS |
+| U-03 | ISO/SRC · X | native upgrade(`SRC`) | reject unauthorized upgrade | `0x126d1533ed6b7fbf43b7d1e51dca1bc70945011e343afb319c7dfdc9d9f19318` · F/A/E | code SHA/upgrader unchanged; “Unauthorized upgrader” | PASS |
 
 ## Isolated upgrade rehearsal
 
