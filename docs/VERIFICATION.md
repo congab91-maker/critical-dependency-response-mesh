@@ -2,19 +2,19 @@
 
 ## Current checkpoint
 
-This document records the deployed and primary-AI-tested contract, public repository, and production frontend. The mandatory user-executed wallet E2E and final anonymous checkpoint remain future gates and are not claimed here.
+This document records the deployed contract, public repository, production frontend, and user-authorized OKX-wallet E2E. The final anonymous `POST_GITHUB_VERCEL_FINAL` checkpoint remains pending and is not claimed here.
 
-Release publication now exists, but the mandatory user-executed wallet E2E and final anonymous checkpoint remain pending:
+Release publication and wallet E2E are complete; final anonymous review remains pending:
 
 - Public repository: `https://github.com/congab91-maker/critical-dependency-response-mesh`
 - Public branch: `master`
-- Published source tree: `39b5a7caddec62bb3291d4eda4155490b9fa2d79`
+- Deployed frontend source commit: `2a97feda18431bf3e4b4091f3790a6fdb6dc5288`
+- Deployed frontend source tree: `feac8285c5a707bbed0513146ed53bbe3618c0be`
 - Live app: `https://critical-dependency-response-mesh.vercel.app`
 - Vercel project: `brunogg/critical-dependency-response-mesh`
-- Deployed frontend source commit: `0f8ebba7d37aacdc4b335dfde9120b8331487a30`
-- Production deployment: `dpl_DFxpD7J1XK6p9Bw6cjybdQz9bJ4u` (`READY`)
-- Production bundle check: correct contract/RPC rendered; truthful slow-read loading state; both live incidents and graph loaded; wallet chooser/no-provider path passed; reload returned disconnected; no browser console warnings/errors
-- User wallet E2E: pending; no final release approval is claimed
+- Production deployment: `dpl_B6zpM7KF9khPUJSGEocM3FdzSyDN` (`READY`)
+- Production bundle check: correct contract/RPC and visible per-second local countdown; deadline-gated close; truthful transient-read loading state; graph/table; exact EIP-6963 OKX routing; reload disconnected
+- User wallet E2E: PASS through incident #3 `DISCLOSED → GRAPH_OPEN → LOCKED → TRIAGED → RESPONSE → CLOSED`; final anonymous approval remains pending
 
 - Submission category: `PROJECT`
 - Network target: GenLayer Studionet, chain ID `61999`
@@ -35,14 +35,14 @@ The immutable anonymous-review package envelope records the exact packaging comm
 
 ## Independent local verification
 
-Executed on 2026-08-23:
+Executed on 2026-08-24:
 
 ```text
 python -m pip check                         PASS — No broken requirements found
 genvm-lint contracts/...py                 PASS — 3 checks
 python -m pytest -p no:cacheprovider -q    PASS — 30 tests
 npm run typecheck                          PASS — 0 errors
-npm run test -- --run                      PASS — 4 files, 29 tests
+npm run test -- --run                      PASS — 4 files, 38 tests
 npm run build                              PASS — production build generated
 git diff --check                           PASS
 git status --porcelain                     PASS — clean when the review package was created
@@ -60,6 +60,30 @@ Local browser inspection confirmed:
 - with no supported injected provider, the chooser reports that state without initiating a connection;
 - a reload starts disconnected.
 - slow Studionet reads display a truthful live-region loading state instead of a false empty-incident message.
+- response countdown updates locally every second without RPC; close is absent before `RESPONSE` and disabled until the on-chain deadline;
+- one shared Studionet read client serializes calls, deduplicates identical in-flight reads, retries only transient/429 failures at most three times with bounded exponential backoff and `Retry-After`, and performs no continuous read polling;
+- one write authorization can call `writeContract` at most once while finality/readback is pending.
+
+## Production OKX-wallet E2E — incident 3
+
+Executed on the stable Vercel URL using the user's explicitly selected EIP-6963 OKX provider (`com.okex.wallet`) and account `0x5d598f10a428fb2039edbc3ace83351650b286e0`. Each successful write reached `FINALIZED`, consensus acceptance, execution `SUCCESS`, and the advertised authoritative readback before the next write. No private wallet material was recorded.
+
+| Step | Transaction | Authoritative result |
+|---|---|---|
+| create incident | `0xa591d7211f48cfed03549f36a8276e1574862ea3c71583472038c9a62c0d1046` | incident #3 `DISCLOSED`, CVE-2021-23337 / lodash |
+| open graph | `0xbbd677296c6cf253b25efc1fd627a33aa13036cca70736d4ab6187a30b9f1abb` | `GRAPH_OPEN` |
+| register direct | `0xb6dac06f86109e1bbfd27c287966bcced49d9653d2dccbaa75fb9dd9d82e910a` | `judge-lodash-direct` owned by OKX account |
+| register consumer | `0x29a77cefeb113cd6dd018bcca70b923be7f558b6f6f659806919873490cea773` | `judge-consumer-app` owned by OKX account |
+| add dependency | `0x53d65578b0fd3b5ab0af5eb4699e0000184b60bec009a1de8fec530403c704f1` | consumer → direct edge persisted |
+| lock graph | `0x4afba2c4357096fbae3bc8158e667b3683991e5e16b48d2cd6be01bc5bd10f60` | `LOCKED`, 2 nodes / 1 edge |
+| triage direct | `0xae77b88ecf2f61de56c73407e46c6bb421766152752e65fb158c51c7d7982b1d` | safe insufficiency `UNCERTAIN / REVIEW / INSUFFICIENT` |
+| triage consumer | `0xda8155e39d0281b9229fd773732480b293de04c5372a4e31a77c8f64124a8814` | same safe insufficiency; phase `TRIAGED` |
+| begin response | `0x9510de7ed284d93102b3d7a3cbb7d3207f268a8a40f179186f3da9b55fd23b2e` | `RESPONSE` |
+| acknowledge direct | `0x49a270b2ae37489d758688f6be968ff62771b9ed35feb29b60bcf8fa0a53b943` | URI/hash exact; acknowledged |
+| acknowledge consumer | `0x4a905dbb5f526e08d0fc6c7e346622963ab97f608c3034539f9abec8de2d53f0` | URI/hash exact; acknowledged; pending count 0 |
+| close after deadline | `0x802b7f760c1b85a4401fd280bff877196be21ae5d8e288ccb26b8064d9ea8ae4` | `CLOSED`, sealed `2026-08-24 00:57:19 +07:00`, unresolved 0 |
+
+Post-close full reload returned disconnected, loaded incident #3 as `CLOSED`, retained both acknowledgements and graph/table state, and showed unresolved count 0. The live countdown was directly observed changing from `0h 5m 33s` to `0h 5m 29s` over four seconds without a contract read.
 
 ## Live Studionet transaction ledger
 

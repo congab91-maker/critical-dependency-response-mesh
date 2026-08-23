@@ -7,7 +7,7 @@ An Intelligent Contract coordination mesh that turns public vulnerability eviden
 - **Studionet contract:** [`0x671Fe675c98690068f822a6a51DA7c639CAC0ce3`](https://explorer-studio.genlayer.com/address/0x671Fe675c98690068f822a6a51DA7c639CAC0ce3)
 - **Deployment transaction:** [`0x2fd647ea2cfa1ca6116b4e28d8626db668396a2f3cc7e6c20ecbd08d601c9d2f`](https://explorer-studio.genlayer.com/tx/0x2fd647ea2cfa1ca6116b4e28d8626db668396a2f3cc7e6c20ecbd08d601c9d2f)
 - **Verification evidence:** [`docs/VERIFICATION.md`](docs/VERIFICATION.md)
-- **Live app:** [https://critical-dependency-response-mesh.vercel.app](https://critical-dependency-response-mesh.vercel.app) — production deployment is live; mandatory user-executed wallet E2E remains pending
+- **Live app:** [https://critical-dependency-response-mesh.vercel.app](https://critical-dependency-response-mesh.vercel.app) — production OKX-wallet E2E completed through immutable incident closure
 
 ## Trust problem
 
@@ -104,7 +104,7 @@ npm run test -- --run
 npm run build
 ```
 
-Current results: dependency check PASS; GenVM lint 3 checks PASS; 30 contract tests PASS; TypeScript PASS; 4 Vitest files / 29 frontend tests PASS; production build PASS. Vite reports one reviewed non-blocking chunk-size warning for the GenLayer/viem client bundle.
+Current results: dependency check PASS; GenVM lint 3 checks PASS; 30 contract tests PASS; TypeScript PASS; 4 Vitest files / 38 frontend tests PASS; production build PASS. Vite reports one reviewed non-blocking chunk-size warning for the GenLayer/viem client bundle.
 
 The complete chronological Studio ledger—including failed attempts and retries—is in [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
 
@@ -139,4 +139,4 @@ See [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) for the adversarial matrix.
 - External-source freshness and availability constrain triage. Safe insufficiency is useful uncertainty, not proof of absence.
 - A remediation URI and note hash prove an attributable acknowledgement, not patch correctness or software safety.
 - Studionet is a development network; this release is not a production vulnerability authority.
-- The mandatory independent-wallet live web E2E remains pending and is not claimed complete in this revision.
+- Studionet capacity remains shared and transiently rate-limited. The frontend serializes reads, deduplicates identical in-flight calls, bounds transient/429 retries, performs no continuous read polling, prevents concurrent write submission, and preserves finality plus authoritative readback checks.
