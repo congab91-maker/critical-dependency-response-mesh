@@ -74,15 +74,17 @@ export class MeshTransactionService {
       });
 
       const finalizedStatus = receipt.statusName ?? receipt.status;
-      if (finalizedStatus !== 'FINALIZED') {
+      if (String(finalizedStatus) !== 'FINALIZED' && String(finalizedStatus) !== '7') {
         throw new Error(`Transaction did not finalize (status: ${String(finalizedStatus)})`);
       }
-      if (receipt.resultName !== 'SUCCESS') {
-        throw new Error(`Consensus result was not successful (result: ${String(receipt.resultName)})`);
+      const consensusResult = receipt.resultName ?? receipt.result;
+      if (!['SUCCESS', 'AGREE', 'MAJORITY_AGREE', '1', '6'].includes(String(consensusResult))) {
+        throw new Error(`Consensus result was not successful (result: ${String(consensusResult)})`);
       }
-      if (receipt.txExecutionResultName !== 'FINISHED_WITH_RETURN') {
+      const executionResult = receipt.txExecutionResultName ?? receipt.txExecutionResult;
+      if (String(executionResult) !== 'FINISHED_WITH_RETURN' && String(executionResult) !== '1') {
         throw new Error(
-          `Contract execution failed (execution: ${String(receipt.txExecutionResultName)})`
+          `Contract execution failed (execution: ${String(executionResult)})`
         );
       }
 

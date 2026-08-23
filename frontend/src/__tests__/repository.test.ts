@@ -29,6 +29,18 @@ describe('MeshRepository Protocol and View Parsing', () => {
     });
   });
 
+  it('retries transient RPC read failures before surfacing an error', async () => {
+    vi.spyOn(clientModule, 'getContractAddress').mockReturnValue(
+      '0x1234567890123456789012345678901234567890'
+    );
+    vi.spyOn(clientModule.defaultGenlayerClient, 'readContract')
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockResolvedValueOnce(3n as any);
+
+    await expect(meshRepository.getIncidentCount()).resolves.toBe(3);
+    expect(clientModule.defaultGenlayerClient.readContract).toHaveBeenCalledTimes(2);
+  });
+
   it('parses get_incident_json correctly into typed Incident', async () => {
     vi.spyOn(clientModule, 'getContractAddress').mockReturnValue(
       '0x1234567890123456789012345678901234567890'

@@ -73,6 +73,19 @@ describe('MeshTransactionService Protocol and Finality', () => {
     });
   });
 
+  it('accepts the numeric finalized receipt shape returned by live Studionet', async () => {
+    mockClient.waitForTransactionReceipt.mockResolvedValueOnce({
+      status: 7,
+      result: 6,
+      txExecutionResult: 1,
+    });
+
+    await expect(meshTransactions.openGraph(mockProvider, mockAccount, 1)).resolves.toMatchObject({
+      hash: mockTxHash,
+      status: 'FINALIZED',
+    });
+  });
+
   it('executes open_graph write', async () => {
     const receipt = await meshTransactions.openGraph(mockProvider, mockAccount, 1);
     expect(receipt.status).toBe('FINALIZED');

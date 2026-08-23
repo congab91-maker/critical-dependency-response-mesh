@@ -16,6 +16,19 @@ const ACTIONS = new Set(['', 'QUARANTINE', 'REVIEW', 'MONITOR', 'NO_ACTION']);
 const IMPACT_KINDS = new Set(['', 'DIRECT', 'TRANSITIVE', 'NONE', 'INSUFFICIENT']);
 const CONFIDENCE_BANDS = new Set(['', 'HIGH', 'MEDIUM', 'LOW']);
 
+async function readWithRetry<T>(read: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await read();
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  throw lastError;
+}
+
 function record(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${label} must be a JSON object`);
@@ -67,11 +80,11 @@ export class MeshRepository {
   public async getIncidentCount(): Promise<number> {
     const address = this.ensureContractAddress();
     try {
-      const raw = await defaultGenlayerClient.readContract({
+      const raw = await readWithRetry(() => defaultGenlayerClient.readContract({
         address,
         functionName: 'get_incident_count',
         args: [],
-      });
+      }));
       const count = Number(raw);
       if (!Number.isSafeInteger(count) || count < 0) throw new Error('Invalid incident count');
       return count;
@@ -83,11 +96,11 @@ export class MeshRepository {
   public async getIncident(incidentId: number): Promise<Incident | null> {
     const address = this.ensureContractAddress();
     try {
-      const jsonStr = (await defaultGenlayerClient.readContract({
+      const jsonStr = (await readWithRetry(() => defaultGenlayerClient.readContract({
         address,
         functionName: 'get_incident_json',
         args: [BigInt(incidentId)],
-      })) as string;
+      }))) as string;
 
       const data = record(parseJson(jsonStr, 'incident'), 'incident');
       const phase = enumField(data.phase, PHASES, 'incident.phase') as Incident['phase'];
@@ -143,16 +156,16 @@ export class MeshRepository {
     const address = this.ensureContractAddress();
     try {
       const [projectsJsonStr, edgesJsonStr] = await Promise.all([
-        defaultGenlayerClient.readContract({
+        readWithRetry(() => defaultGenlayerClient.readContract({
           address,
           functionName: 'get_projects_json',
           args: [BigInt(incidentId), BigInt(0), BigInt(50)],
-        }) as Promise<string>,
-        defaultGenlayerClient.readContract({
+        })) as Promise<string>,
+        readWithRetry(() => defaultGenlayerClient.readContract({
           address,
           functionName: 'get_edges_json',
           args: [BigInt(incidentId), BigInt(0), BigInt(100)],
-        }) as Promise<string>,
+        })) as Promise<string>,
       ]);
 
       const rawProjects = parseJson(projectsJsonStr, 'projects');
@@ -207,11 +220,11 @@ export class MeshRepository {
   public async getUnresolvedRecords(incidentId: number): Promise<UnresolvedRecord[]> {
     const address = this.ensureContractAddress();
     try {
-      const jsonStr = (await defaultGenlayerClient.readContract({
+      const jsonStr = (await readWithRetry(() => defaultGenlayerClient.readContract({
         address,
         functionName: 'get_unresolved_json',
         args: [BigInt(incidentId)],
-      })) as string;
+      }))) as string;
 
       const raw = parseJson(jsonStr, 'unresolved records');
       if (!Array.isArray(raw)) throw new Error('unresolved records must be a JSON array');
@@ -238,11 +251,11 @@ export class MeshRepository {
   public async getUpgraderStatus(): Promise<UpgraderStatus> {
     const address = this.ensureContractAddress();
     try {
-      const jsonStr = (await defaultGenlayerClient.readContract({
+      const jsonStr = (await readWithRetry(() => defaultGenlayerClient.readContract({
         address,
         functionName: 'get_upgrade_status_json',
         args: [],
-      })) as string;
+      }))) as string;
 
       const data = record(parseJson(jsonStr, 'upgrade status'), 'upgrade status');
       if (!Array.isArray(data.upgraders) || !data.upgraders.every((v) => typeof v === 'string')) {
@@ -261,11 +274,11 @@ export class MeshRepository {
   public async getLimits(): Promise<LimitsConfig> {
     const address = this.ensureContractAddress();
     try {
-      const jsonStr = (await defaultGenlayerClient.readContract({
+      const jsonStr = (await readWithRetry(() => defaultGenlayerClient.readContract({
         address,
         functionName: 'get_limits_json',
         args: [],
-      })) as string;
+      }))) as string;
 
       const data = record(parseJson(jsonStr, 'limits'), 'limits');
       return {
