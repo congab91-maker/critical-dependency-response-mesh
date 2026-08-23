@@ -1,107 +1,142 @@
 # Critical Dependency Response Mesh
 
-An Intelligent Contract coordination mesh on GenLayer Studionet for public supply-chain vulnerability incidents, maintainer dependency claim graphs, consensus-based triage, and remediation tracking.
+An Intelligent Contract coordination mesh that turns public vulnerability evidence and maintainer-declared dependency claims into consensus-backed incident triage and an immutable response ledger on GenLayer Studionet.
 
-## 1. The Trust Problem
+## Verified links
 
-When a critical vulnerability (such as an actively exploited CVE in the CISA KEV catalog) affects widely shared open-source packages, coordinating the response across dependent projects is fraught with friction and misaligned incentives:
-- Downstream software maintainers often do not know whether their specific dependency chains are affected or if their upstream dependencies have applied fixes.
-- Project maintainers may minimize or delay acknowledging vulnerability exposure due to reputational concerns or operational inertia.
-- Traditional vulnerability registries and dependency scanners either operate as centralized authorities or rely solely on local static analysis without decentralized consensus or tamper-proof response tracking.
+- **Studionet contract:** [`0x671Fe675c98690068f822a6a51DA7c639CAC0ce3`](https://explorer-studio.genlayer.com/address/0x671Fe675c98690068f822a6a51DA7c639CAC0ce3)
+- **Deployment transaction:** [`0x2fd647ea2cfa1ca6116b4e28d8626db668396a2f3cc7e6c20ecbd08d601c9d2f`](https://explorer-studio.genlayer.com/tx/0x2fd647ea2cfa1ca6116b4e28d8626db668396a2f3cc7e6c20ecbd08d601c9d2f)
+- **Verification evidence:** [`docs/VERIFICATION.md`](docs/VERIFICATION.md)
+- **Live app:** pending publication and mandatory user-executed wallet E2E; no live URL is claimed yet
 
-## 2. Why GenLayer
+## Trust problem
 
-GenLayer Intelligent Contracts enable decentralized validator consensus over real-time web evidence and semantic graph analysis:
-- **Consensus-Backed Triage**: Independent validators fetch authoritative public records (CISA KEV, NVD CVE, OSV) and evaluate exposure across a registered dependency graph.
-- **Fail-Safe Insufficiency**: When evidence is missing, conflicting, or unreachable, GenLayer validators reach consensus on `UNCERTAIN / REVIEW / INSUFFICIENT`, preventing unsafe `UNAFFECTED` defaults.
-- **Immutable Response Ledger**: Triage classifications, maintainer remediation acknowledgements with evidence URIs, and the final unresolved cohort are recorded directly on-chain without centralized intermediaries.
+During a critical open-source vulnerability, downstream maintainers cannot safely rely on upstream self-reporting alone, while one registry or scanner should not unilaterally decide the incident outcome. Maintainers may omit dependency edges, overstate a fixed version, or delay acknowledging remediation. The contract makes every claim attributable to an address, freezes the declared graph and public evidence snapshot, and records validator-consensus triage and response status on-chain.
 
-## 3. Architecture
+The graph remains a maintainer-declared claim graph—not an automated SBOM—and acknowledgement records evidence of action rather than proving that a patch is functionally safe.
 
-- **Intelligent Contract**: `contracts/critical_dependency_response_mesh.py` (`CriticalDependencyResponseMesh`)
-- **Direct-Mode Test Suite**: `tests/` using `genlayer-test==0.29.2`
-- **Frontend DApp**: Single React + TypeScript + Vite application in `frontend/` utilizing `genlayer-js: 1.1.8` and native EIP-6963 wallet discovery (MetaMask, OKX Wallet, Rabby).
-- **Network**: GenLayer Studionet (Chain ID `61999` / `0xf22f`, RPC: `https://studio.genlayer.com/api`).
-- **Design Philosophy**: Non-economic, single-contract architecture with no custom backends, databases, indexers, relayers, or tokens.
+## Why GenLayer is essential
 
-## 4. State Machine
+Validators fetch three public sources that a deterministic contract cannot evaluate alone: CISA KEV for exploitation status, NVD CVE 2.0 for CVE identity and descriptions, and OSV for affected/fixed npm SemVer ranges. They validate a frozen canonical-JSON snapshot, traverse the bounded dependency graph, and agree on the normalized consequence recorded for each project.
 
-The lifecycle of an incident transitions through six discrete phases:
+Evidence failure never defaults to safety. Missing, malformed, changed, rate-limited, or insufficient evidence maps to `UNCERTAIN / REVIEW / INSUFFICIENT`. Consensus results drive consequential on-chain transitions, remediation acknowledgement eligibility, and the final unresolved cohort.
 
+## How it works
+
+1. A coordinator discloses a CVE with canonical source URLs, vulnerable package, snapshot hash, and response deadline.
+2. Maintainers register project/version claims and dependency edges while the graph is open.
+3. The coordinator locks the graph only after validators reproduce the frozen evidence digest.
+4. Any caller can trigger project triage; validators classify direct and transitive exposure until every node is processed.
+5. The coordinator opens response; each registered maintainer can acknowledge only its own project with a public remediation URI and note hash.
+6. At or after the deadline, the coordinator closes the incident and freezes every unacknowledged affected project in the unresolved cohort.
+
+The frontend exposes each phase's applicable controls, graph visualization, and an accessible table. Wallet connection always begins with an explicit MetaMask, OKX Wallet or Rabby selector.
+
+## Architecture
+
+- **Intelligent Contract:** `contracts/critical_dependency_response_mesh.py` is the sole authority for actors, lifecycle, graph claims, evidence digest, triage records, acknowledgements and closure.
+- **Frontend:** React 19, TypeScript and Vite in `frontend/`; reads contract state and submits wallet-signed writes through `genlayer-js 1.1.8`.
+- **Wallet discovery:** strict EIP-6963 discovery for MetaMask, OKX Wallet and Rabby only; no default provider or silent account request.
+- **Tests:** Direct Mode contract tests under `tests/` and Vitest frontend tests under `frontend/src/__tests__/`.
+- **Infrastructure:** one non-economic contract; no custom backend, database, indexer, relayer, token or off-chain source of truth.
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for storage and consensus details.
+
+## Intelligent Contract
+
+The lifecycle is strictly ordered:
+
+```text
+DISCLOSED -> GRAPH_OPEN -> LOCKED -> TRIAGED -> RESPONSE -> CLOSED
 ```
-DISCLOSED ──► GRAPH_OPEN ──► LOCKED ──► TRIAGED ──► RESPONSE ──► CLOSED
+
+Key writes are `create_incident`, `open_graph`, `register_project`, `add_dependency`, `lock_graph`, `triage_next`, `begin_response`, `acknowledge_action`, and `close_incident`. The coordinator owns phase transitions; initial registration binds each project to its maintainer; graph writes are maintainer-authorized; triage triggering is permissionless; acknowledgements are maintainer-only.
+
+The graph is capped at 24 nodes, 64 edges and 8 traversal hops. Canonical source identity, JSON normalization, snapshot parity and CVE binding are validated before triage. Validator outputs are normalized into exposure, action, reason, confidence and evidence-status fields before storage. This project is non-economic and holds no funds.
+
+## Transaction lifecycle
+
+1. The user explicitly selects an available supported wallet and approves the account request.
+2. Inputs are validated before the selected provider signs and submits the transaction.
+3. The UI displays pending status and waits for terminal finality.
+4. Success requires `FINALIZED`, consensus agreement, leader execution `SUCCESS`, and authoritative contract readback.
+5. Finalized errors, wallet rejection, timeout and malformed readback remain visible failures and retryable where applicable.
+6. Duplicate-sensitive contract methods reject replay.
+7. A full page reload returns to disconnected state and requires a fresh wallet choice.
+
+## Run locally
+
+Prerequisites: Node.js 22.x, npm 12.x, Python 3.12+ (verified with 3.13), `uv`, GenLayer CLI 0.39.2 and `genvm-lint 0.11.0`.
+
+```powershell
+uv venv --python 3.13 .venv
+uv pip install --python .\.venv\Scripts\python.exe -r requirements.txt
+
+Set-Location frontend
+npm ci
+Copy-Item .env.example .env
+npm run dev
 ```
 
-1. **DISCLOSED**: Coordinator initializes incident with CVE ID, CISA/NVD/OSV URLs, primary vulnerable package, snapshot hash, and response deadline.
-2. **GRAPH_OPEN**: Project maintainers register project IDs, canonical npm package names, exact SemVer versions, and dependency edges.
-3. **LOCKED**: Validators verify the framed canonical-JSON CISA/NVD/OSV digest against the declared snapshot hash; the coordinator then freezes the graph and its deterministic SHA-256 graph hash.
-4. **TRIAGED**: Permissionless callers trigger `triage_next` for each node; validators reach consensus on direct and transitive exposure. Moves to `TRIAGED` once all nodes are processed.
-5. **RESPONSE**: Coordinator opens response phase; maintainers submit remediation acknowledgements with public PR/commit URIs and note hashes.
-6. **CLOSED**: At or after the response deadline, coordinator closes the incident; unacknowledged affected nodes are permanently recorded in the immutable unresolved cohort.
+The frontend environment is intentionally small:
 
-## 5. Evidence Boundaries and Limitations
+```dotenv
+VITE_CONTRACT_ADDRESS=0x671Fe675c98690068f822a6a51DA7c639CAC0ce3
+VITE_GENLAYER_RPC_URL=https://studio.genlayer.com/api
+```
 
-- **Ecosystem**: npm only (canonical unscoped names or `@scope/package`).
-- **Evidence Model**: CISA KEV binds exploitation status; NVD binds CVE identity and descriptions; OSV binds affected/fixed SemVer version ranges.
-- **Canonical Sources**: Incidents accept only the canonical CISA KEV JSON feed, the NVD CVE 2.0 endpoint queried for the exact incident CVE, and an `api.osv.dev/v1/vulns/{id}` record whose structured ID or alias matches that CVE.
-- **Frozen Snapshot**: Each response must be valid JSON and is serialized deterministically as UTF-8 with sorted keys and compact separators. NVD's generated top-level transport `timestamp` is excluded; no other evidence field is removed. `snapshot_hash` is the SHA-256 digest of those canonical JSON bytes framed as `CISA\0...\0NVD\0...\0OSV\0...`. Lock rejects malformed or mismatched content; triage reverts on later semantic content drift so no node consumes mixed-version evidence.
-- **Maintainer Claim Graph**: The graph is explicitly a bounded maintainer claim graph for the incident (max 24 nodes, max 64 edges, max depth 8 hops). It is not an automated scanner or complete SBOM.
-- **Acknowledgement Meaning**: An acknowledgement records evidence of maintainer action; it does not certify cryptographic or functional safety of the patch.
+No private key, seed phrase or wallet credential belongs in either environment file.
 
-## 6. Project Setup & Local Verification
+## Tests and verification
 
-### Prerequisites
+Verified on 2026-08-23:
 
-- Node.js `22.x` and npm `12.x`
-- Python `3.13` (or `3.12+`)
-- `uv` (recommended) or virtualenv
-- `genlayer CLI 0.39.2` and `genvm-lint 0.11.0`
+```powershell
+$env:PYTHONUTF8='1'
+$env:PYTHONIOENCODING='utf-8'
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\genvm-lint.exe contracts\critical_dependency_response_mesh.py
+.\.venv\Scripts\python.exe -m pytest -p no:cacheprovider -q
 
-### Step-by-Step Commands
+Set-Location frontend
+npm run typecheck
+npm run test -- --run
+npm run build
+```
 
-1. **Create and Activate Virtual Environment**:
-   ```bash
-   uv venv --python 3.13 .venv
-   # Windows PowerShell:
-   .\.venv\Scripts\Activate.ps1
-   # POSIX:
-   source .venv/bin/activate
-   ```
+Current results: dependency check PASS; GenVM lint 3 checks PASS; 30 contract tests PASS; TypeScript PASS; 4 Vitest files / 28 frontend tests PASS; production build PASS. Vite reports one reviewed non-blocking chunk-size warning for the GenLayer/viem client bundle.
 
-2. **Install Python Dependencies**:
-   ```bash
-   uv pip install --python .\.venv\Scripts\python.exe -r requirements.txt
-   ```
+The complete chronological Studio ledger—including failed attempts and retries—is in [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
 
-3. **Verify Dependencies**:
-   ```bash
-   python -m pip check
-   ```
+## Deployment
 
-4. **Lint Contract with GenVM Linter**:
-   ```bash
-   genvm-lint contracts\critical_dependency_response_mesh.py
-   ```
+- Network: GenLayer Studionet
+- Chain ID: `61999` (`0xf22f`)
+- RPC: `https://studio.genlayer.com/api`
+- Current contract: `0x671Fe675c98690068f822a6a51DA7c639CAC0ce3`
+- Exact deployed source: 68,518 bytes; SHA-256 `9A0DD1219504190383C0896D26A1CDB4BE9142DA940E7598B93EDA3D42FAE7C0`
+- Deployment: `FINALIZED / MAJORITY_AGREE / SUCCESS`
+- Classification: upgradable; native upgrader is recorded in the secret-free deployment manifest
 
-5. **Run Direct-Mode Contract Tests**:
-   ```bash
-   pytest tests/ -v -p no:cacheprovider
-   ```
+Recovery, isolated upgrade rehearsal and superseded deployment history are documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) and [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
 
-6. **Install Frontend Dependencies & Build**:
-   ```bash
-   cd frontend
-   npm ci
-   npm run typecheck
-   npm run test
-   npm run build
-   ```
+## Security and trust boundaries
 
-## 7. Current Project Status
+- Contract authorization, not UI visibility, controls every privileged write.
+- Coordinator inputs cannot inject a verdict; validators derive normalized consequences from frozen public evidence and graph claims.
+- Maintainers can update only their own claims and acknowledge only their own projects.
+- HTTPS hosts and canonical API paths are allowlisted; private-network and arbitrary evidence URLs are rejected.
+- Snapshot drift, malformed JSON and unavailable evidence fail closed or remain retryable.
+- Contract input validation bounds identifiers, versions, graph size, traversal depth, URLs and evidence sizes.
+- No browser user needs the Studio deployer/upgrader identity.
 
-- **Phase**: Studionet deployment and live contract verification complete; release preparation pending.
-- **Contract**: Verified deployment at [`0x671Fe675c98690068f822a6a51DA7c639CAC0ce3`](https://explorer-studio.genlayer.com/address/0x671Fe675c98690068f822a6a51DA7c639CAC0ce3).
-- **Frontend**: Implementation and unit/integration test suite complete and configured for the verified Studionet contract.
-- **Release**: GitHub/Vercel publication and the mandatory user-executed wallet E2E are not yet complete.
+See [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) for the adversarial matrix.
 
-See [`docs/VERIFICATION.md`](docs/VERIFICATION.md) for exact local evidence and [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the Studionet deployment/recovery runbook.
+## Known limitations
+
+- Only npm package names and exact SemVer versions are supported.
+- The graph reflects maintainer declarations and may be incomplete or inaccurate; it is not repository scanning or a signed SBOM.
+- External-source freshness and availability constrain triage. Safe insufficiency is useful uncertainty, not proof of absence.
+- A remediation URI and note hash prove an attributable acknowledgement, not patch correctness or software safety.
+- Studionet is a development network; this release is not a production vulnerability authority.
+- GitHub/Vercel publication and the mandatory independent-wallet live web E2E remain pending and are not claimed complete in this revision.
