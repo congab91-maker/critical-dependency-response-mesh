@@ -174,24 +174,10 @@ export const App: React.FC = () => {
     });
   }, [isNewIncidentModalOpen, ackModalProjectId]);
 
-  const handleSelectIncident = async (id: number) => {
+  const handleSelectIncident = (id: number) => {
+    setIsLoadingMesh(true);
     setSelectedIncidentId(id);
     setSelectedNodeId(null);
-    try {
-      const [inc, g, unres] = await Promise.all([
-        meshRepository.getIncident(id),
-        meshRepository.getIncidentGraph(id),
-        meshRepository.getUnresolvedRecords(id),
-      ]);
-      setSelectedIncident(inc);
-      setGraph(g);
-      setUnresolved(unres);
-      if (g.nodes.length > 0) {
-        setSelectedNodeId(g.nodes[0].project_id);
-      }
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Failed to switch incident.');
-    }
   };
 
   // Transaction Handlers

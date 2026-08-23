@@ -16,17 +16,23 @@ const ACTIONS = new Set(['', 'QUARANTINE', 'REVIEW', 'MONITOR', 'NO_ACTION']);
 const IMPACT_KINDS = new Set(['', 'DIRECT', 'TRANSITIVE', 'NONE', 'INSUFFICIENT']);
 const CONFIDENCE_BANDS = new Set(['', 'HIGH', 'MEDIUM', 'LOW']);
 
-async function readWithRetry<T>(read: () => Promise<T>): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      return await read();
-    } catch (error) {
-      lastError = error;
-      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500));
+let readQueue: Promise<void> = Promise.resolve();
+
+function readWithRetry<T>(read: () => Promise<T>): Promise<T> {
+  const result = readQueue.then(async () => {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await read();
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500));
+      }
     }
-  }
-  throw lastError;
+    throw lastError;
+  });
+  readQueue = result.then(() => undefined, () => undefined);
+  return result;
 }
 
 function record(value: unknown, label: string): Record<string, unknown> {

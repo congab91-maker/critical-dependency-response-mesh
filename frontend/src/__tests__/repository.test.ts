@@ -41,6 +41,24 @@ describe('MeshRepository Protocol and View Parsing', () => {
     expect(clientModule.defaultGenlayerClient.readContract).toHaveBeenCalledTimes(2);
   });
 
+  it('serializes concurrent reads through one shared RPC slot', async () => {
+    vi.spyOn(clientModule, 'getContractAddress').mockReturnValue(
+      '0x1234567890123456789012345678901234567890'
+    );
+    let active = 0;
+    let maxActive = 0;
+    vi.spyOn(clientModule.defaultGenlayerClient, 'readContract').mockImplementation(async () => {
+      active++;
+      maxActive = Math.max(maxActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      active--;
+      return 3n as any;
+    });
+
+    await Promise.all([meshRepository.getIncidentCount(), meshRepository.getIncidentCount()]);
+    expect(maxActive).toBe(1);
+  });
+
   it('parses get_incident_json correctly into typed Incident', async () => {
     vi.spyOn(clientModule, 'getContractAddress').mockReturnValue(
       '0x1234567890123456789012345678901234567890'
