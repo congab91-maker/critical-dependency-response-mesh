@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import { WalletProvider } from '../wallet/WalletContext';
 import { Header } from '../components/Header';
 import { IncidentSummary } from '../components/IncidentSummary';
@@ -107,6 +107,28 @@ describe('Frontend UI Components', () => {
       'Loading finalized incident state from GenLayer Studionet'
     );
     expect(screen.queryByText(/No active incident selected/i)).not.toBeInTheDocument();
+  });
+
+  it('updates the response countdown locally without another contract read', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-24T00:00:00Z'));
+    const incident = {
+      ...mockIncident,
+      response_deadline: Math.floor(Date.now() / 1000) + 65,
+    };
+    const { unmount } = render(
+      <IncidentSummary
+        incidents={[{ ...mockSummary, response_deadline: incident.response_deadline }]}
+        selectedIncident={incident}
+        onSelectIncident={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('0h 1m 5s remaining')).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(screen.getByText('0h 1m 4s remaining')).toBeInTheDocument();
+    unmount();
+    vi.useRealTimers();
   });
 
   it('renders Header with native upgrader status', () => {

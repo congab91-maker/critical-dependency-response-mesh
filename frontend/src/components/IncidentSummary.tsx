@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Incident, IncidentSummary as IncidentSummaryType } from '../genlayer/types';
 
 interface IncidentSummaryProps {
@@ -14,6 +14,14 @@ export const IncidentSummary: React.FC<IncidentSummaryProps> = ({
   isLoading = false,
   onSelectIncident,
 }) => {
+  const [nowMs, setNowMs] = useState(Date.now());
+
+  useEffect(() => {
+    if (!selectedIncident || selectedIncident.phase === 'CLOSED') return;
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [selectedIncident]);
+
   if (isLoading) {
     return (
       <div className="card summary-empty" role="status" aria-live="polite">
@@ -54,11 +62,12 @@ export const IncidentSummary: React.FC<IncidentSummaryProps> = ({
     }
   };
 
-  const now = Math.floor(Date.now() / 1000);
+  const now = Math.floor(nowMs / 1000);
   const isDeadlinePassed = selectedIncident.response_deadline > 0 && now > selectedIncident.response_deadline;
   const remainingSeconds = Math.max(0, selectedIncident.response_deadline - now);
   const remainingHours = Math.floor(remainingSeconds / 3600);
   const remainingMinutes = Math.floor((remainingSeconds % 3600) / 60);
+  const remainingDisplaySeconds = remainingSeconds % 60;
 
   return (
     <section className="card incident-summary-card" aria-labelledby="incident-summary-heading">
@@ -104,7 +113,7 @@ export const IncidentSummary: React.FC<IncidentSummaryProps> = ({
               ? 'Lifecycle Closed'
               : isDeadlinePassed
               ? 'Deadline Passed'
-              : `${remainingHours}h ${remainingMinutes}m remaining`}
+              : `${remainingHours}h ${remainingMinutes}m ${remainingDisplaySeconds}s remaining`}
           </div>
           <div className="deadline-date">Deadline: {formatTimestamp(selectedIncident.response_deadline)}</div>
         </div>
