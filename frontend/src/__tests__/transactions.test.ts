@@ -233,4 +233,24 @@ describe('MeshTransactionService Protocol and Finality', () => {
       mockProvider
     );
   });
+
+  it('submits at most one write while finality is pending', async () => {
+    let releaseReceipt!: () => void;
+    mockClient.waitForTransactionReceipt.mockReturnValueOnce(new Promise<void>((resolve) => {
+      releaseReceipt = resolve;
+    }).then(() => ({
+      statusName: 'FINALIZED',
+      resultName: 'SUCCESS',
+      txExecutionResultName: 'FINISHED_WITH_RETURN',
+    })));
+
+    const first = meshTransactions.openGraph(mockProvider, mockAccount, 1);
+    await vi.waitFor(() => expect(mockClient.writeContract).toHaveBeenCalledTimes(1));
+    await expect(meshTransactions.openGraph(mockProvider, mockAccount, 1)).rejects.toThrow(
+      'transaction is already in progress'
+    );
+    expect(mockClient.writeContract).toHaveBeenCalledTimes(1);
+    releaseReceipt();
+    await expect(first).resolves.toMatchObject({ status: 'FINALIZED' });
+  });
 });

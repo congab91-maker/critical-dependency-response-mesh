@@ -64,9 +64,9 @@ export const App: React.FC = () => {
   const firstAckInputRef = useRef<HTMLInputElement>(null);
   const lastActiveElementRef = useRef<HTMLElement | null>(null);
 
-  const loadSelectedIncident = useCallback(async (id: number) => {
+  const loadSelectedIncident = useCallback(async (id: number, catalogIncident?: Incident) => {
     const [inc, g, unres] = await Promise.all([
-      meshRepository.getIncident(id),
+      catalogIncident ?? meshRepository.getIncident(id),
       meshRepository.getIncidentGraph(id),
       meshRepository.getUnresolvedRecords(id),
     ]);
@@ -116,10 +116,11 @@ export const App: React.FC = () => {
 
     setIsLoadingMesh(true);
     try {
-      const [summaries, upgrader] = await Promise.all([
-        meshRepository.getIncidentSummaries(),
+      const [catalog, upgrader] = await Promise.all([
+        meshRepository.getIncidentCatalog(),
         meshRepository.getUpgraderStatus(),
       ]);
+      const { summaries, incidents: catalogIncidents } = catalog;
       setIncidents(summaries);
       setUpgraderStatus(upgrader);
 
@@ -129,7 +130,7 @@ export const App: React.FC = () => {
           : summaries[0].incident_id;
         setSelectedIncidentId(activeId);
 
-        await loadSelectedIncident(activeId);
+        await loadSelectedIncident(activeId, catalogIncidents.find((incident) => incident.incident_id === activeId));
       }
     } catch (err: any) {
       console.error('Failed to load mesh data:', err);

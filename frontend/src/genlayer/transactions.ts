@@ -31,6 +31,8 @@ export interface AcknowledgeActionParams {
 }
 
 export class MeshTransactionService {
+  private writeInFlight = false;
+
   private ensureContractAddress(): `0x${string}` {
     const address = getContractAddress();
     if (!address || !address.startsWith('0x') || address.length !== 42) {
@@ -51,7 +53,11 @@ export class MeshTransactionService {
     if (!account || !account.startsWith('0x')) {
       throw new Error('Valid connected wallet account address is required to execute transactions.');
     }
+    if (this.writeInFlight) {
+      throw new Error('A transaction is already in progress. Wait for finality and readback before retrying.');
+    }
 
+    this.writeInFlight = true;
     try {
       const client = createGenlayerClient(undefined, account, provider);
       const txHash = (await client.writeContract({
@@ -103,6 +109,8 @@ export class MeshTransactionService {
     } catch (err: any) {
       const msg = err?.message || 'Transaction submission failed.';
       throw new Error(`Write failed for ${functionName}: ${msg}`);
+    } finally {
+      this.writeInFlight = false;
     }
   }
 

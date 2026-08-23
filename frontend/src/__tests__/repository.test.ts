@@ -41,7 +41,7 @@ describe('MeshRepository Protocol and View Parsing', () => {
     expect(clientModule.defaultGenlayerClient.readContract).toHaveBeenCalledTimes(2);
   });
 
-  it('serializes concurrent reads through one shared RPC slot', async () => {
+  it('deduplicates identical in-flight reads through one shared RPC slot', async () => {
     vi.spyOn(clientModule, 'getContractAddress').mockReturnValue(
       '0x1234567890123456789012345678901234567890'
     );
@@ -57,6 +57,33 @@ describe('MeshRepository Protocol and View Parsing', () => {
 
     await Promise.all([meshRepository.getIncidentCount(), meshRepository.getIncidentCount()]);
     expect(maxActive).toBe(1);
+    expect(clientModule.defaultGenlayerClient.readContract).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry permanent RPC errors', async () => {
+    vi.spyOn(clientModule, 'getContractAddress').mockReturnValue(
+      '0x1234567890123456789012345678901234567890'
+    );
+    vi.spyOn(clientModule.defaultGenlayerClient, 'readContract').mockRejectedValue(new Error('Invalid contract method'));
+
+    await expect(meshRepository.getIncidentCount()).rejects.toThrow('Invalid contract method');
+    expect(clientModule.defaultGenlayerClient.readContract).toHaveBeenCalledTimes(1);
+  });
+
+  it('bounds 429 retries and honors an explicit zero Retry-After', async () => {
+    vi.spyOn(clientModule, 'getContractAddress').mockReturnValue(
+      '0x1234567890123456789012345678901234567890'
+    );
+    const limited: any = new Error('429 rate limited');
+    limited.status = 429;
+    limited.retryAfter = 0;
+    vi.spyOn(clientModule.defaultGenlayerClient, 'readContract')
+      .mockRejectedValueOnce(limited)
+      .mockRejectedValueOnce(limited)
+      .mockResolvedValueOnce(3n as any);
+
+    await expect(meshRepository.getIncidentCount()).resolves.toBe(3);
+    expect(clientModule.defaultGenlayerClient.readContract).toHaveBeenCalledTimes(3);
   });
 
   it('parses get_incident_json correctly into typed Incident', async () => {
