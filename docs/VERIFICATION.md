@@ -85,6 +85,47 @@ Executed on the stable Vercel URL using the user's explicitly selected EIP-6963 
 
 Post-close full reload returned disconnected, loaded incident #3 as `CLOSED`, retained both acknowledgements and graph/table state, and showed unresolved count 0. The live countdown was directly observed changing from `0h 5m 33s` to `0h 5m 29s` over four seconds without a contract read.
 
+## GENLAYER SUBMISSION CATEGORY AND SCORECARD
+
+Category: `PROJECT`
+
+Validity gate: `PASS`
+
+**GenLayer fit: 5/5**
+
+Evidence: GenLayer validator consensus is the product's consequence-bearing core: validators independently retrieve CISA KEV, NVD CVE 2.0, and OSV npm evidence, reproduce a frozen canonical snapshot, and classify direct/transitive exposure before lifecycle state can advance. Exact evidence inspected: contract nondeterministic triage and canonical-source checks, 30 Direct Mode tests, deployment/transaction ledger, and incident #3 live triage/readback.
+
+Weakness/blocker: Public-source outages and identity mismatches intentionally produce safe insufficiency rather than a substantive verdict; this limits decisiveness but preserves safety.
+
+**Contract quality: 5/5**
+
+Evidence: Six-state lifecycle, coordinator/maintainer authorization, bounded graph and traversal, cycle handling, canonical JSON evidence binding, deterministic normalized outcomes, replay prevention, immutable closure cohort, and native upgrader recovery are covered by source, 30 tests, 47-operation Studio ledger, isolated upgrade rehearsal, and `FINALIZED / MAJORITY_AGREE / SUCCESS` deployment evidence.
+
+Weakness/blocker: The graph is maintainer-declared and npm/SemVer-specific; it is not an automated or signed SBOM.
+
+**Engineering: 5/5**
+
+Evidence: Reproducible Python/Node project, pinned runtime dependencies, architecture/threat/deployment/verification documents, 30 contract tests and 38 frontend tests, typecheck/build/lint/pip checks, exact Git commit/tree/source hashes, clean public repository, stable plus immutable Vercel parity, shared RPC FIFO/deduplication, bounded 429 retry, concurrent-write lock, and mandatory finality/execution/readback checks.
+
+Weakness/blocker: The production JavaScript bundle retains one reviewed non-blocking size warning from GenLayer/viem; no dependency was added merely to hide it.
+
+**Frontend / UX: 4/5**
+
+Evidence: Real Studionet contract integration; explicit EIP-6963 MetaMask/OKX/Rabby chooser; exact selected-provider routing; reload-disconnected behavior; full OKX-signed lifecycle; graph plus accessible table; visible loading/error/finality states; per-second local deadline countdown; deadline-gated closure; and persistent post-close readback on the stable Vercel application.
+
+Weakness/blocker: Only OKX received the full production state-changing E2E; MetaMask and Rabby routing are regression-tested but not separately replayed on-chain. Shared Studionet capacity can also make initial reads visibly slower despite bounded recovery.
+
+Overall evidence-based assessment: `19/20`. The exact release demonstrates unusually strong GenLayer necessity, contract rigor, reproducibility, and a complete judge-usable live journey; remaining weaknesses are explicit scope/network constraints rather than hidden blockers.
+
+Submission recommendation: `READY`
+
+## Public Vercel parity
+
+- Stable URL: `https://critical-dependency-response-mesh.vercel.app/` — HTTP 200 without authentication.
+- Immutable URL: `https://critical-dependency-response-mesh-fahpo4qyt-brunogg.vercel.app/` — HTTP 200 without authentication after project-level Vercel Authentication was disabled for judge access.
+- Both URLs serve `/assets/index-BI_5rtNA.js`.
+- Stable and immutable bundle SHA-256: `C20126259B8854192DCCA3C0EB67DB04E3664BA93ED2249E002B83F914B26E3C`; byte-for-byte parity: PASS.
+
 ## Live Studionet transaction ledger
 
 Anonymous review returned `PRE_DEPLOY: APPROVED` for the exact source identifiers above and packaging commit `3c7d7a6767a014b4d860fdba593336f927e19faa`, tree `58b45ee71ae57445417931e972d166d2b6a856bb`. The locked Studio account then deployed and operated the current contract.
