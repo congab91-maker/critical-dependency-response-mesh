@@ -26,6 +26,7 @@ frontend/node_modules/
 frontend/dist/
 frontend/coverage/
 frontend/.vite/
+frontend/.vercel/
 
 # Environment files
 .env

@@ -2,7 +2,17 @@
 
 ## Current checkpoint
 
-This document records the deployed and primary-AI-tested `POST_DEPLOY_TEST` candidate. GitHub/Vercel publication and the mandatory user-executed wallet E2E remain future gates and are not claimed here.
+This document records the deployed and primary-AI-tested contract, public repository, and production frontend. The mandatory user-executed wallet E2E and final anonymous checkpoint remain future gates and are not claimed here.
+
+Release publication now exists, but the mandatory user-executed wallet E2E and final anonymous checkpoint remain pending:
+
+- Public repository: `https://github.com/congab91-maker/critical-dependency-response-mesh`
+- Public branch: `master`
+- Published source tree: `39b5a7caddec62bb3291d4eda4155490b9fa2d79`
+- Live app: `https://critical-dependency-response-mesh.vercel.app`
+- Vercel project: `brunogg/critical-dependency-response-mesh`
+- Production deployment: `dpl_6dezBzz3G6VC3EowRgGbpo792JUB` (`READY`)
+- User wallet E2E: pending; no final release approval is claimed
 
 - Submission category: `PROJECT`
 - Network target: GenLayer Studionet, chain ID `61999`
@@ -30,7 +40,7 @@ python -m pip check                         PASS — No broken requirements foun
 genvm-lint contracts/...py                 PASS — 3 checks
 python -m pytest -p no:cacheprovider -q    PASS — 30 tests
 npm run typecheck                          PASS — 0 errors
-npm run test -- --run                      PASS — 4 files, 28 tests
+npm run test -- --run                      PASS — 4 files, 29 tests
 npm run build                              PASS — production build generated
 git diff --check                           PASS
 git status --porcelain                     PASS — clean when the review package was created
@@ -47,6 +57,7 @@ Local browser inspection confirmed:
 - wallet connect opens an explicit chooser advertising only MetaMask, OKX Wallet and Rabby;
 - with no supported injected provider, the chooser reports that state without initiating a connection;
 - a reload starts disconnected.
+- slow Studionet reads display a truthful live-region loading state instead of a false empty-incident message.
 
 ## Live Studionet transaction ledger
 

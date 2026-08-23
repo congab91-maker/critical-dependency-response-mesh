@@ -93,6 +93,22 @@ const mockGraph: IncidentGraph = {
 };
 
 describe('Frontend UI Components', () => {
+  it('shows a truthful loading state before finalized incident reads complete', () => {
+    render(
+      <IncidentSummary
+        incidents={[]}
+        selectedIncident={null}
+        isLoading
+        onSelectIncident={() => undefined}
+      />
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Loading finalized incident state from GenLayer Studionet'
+    );
+    expect(screen.queryByText(/No active incident selected/i)).not.toBeInTheDocument();
+  });
+
   it('renders Header with native upgrader status', () => {
     const handleOpenModal = vi.fn();
     render(

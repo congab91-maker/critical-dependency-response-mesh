@@ -31,6 +31,7 @@ export const App: React.FC = () => {
   const [graph, setGraph] = useState<IncidentGraph>({ incident_id: 1, nodes: [], edges: [] });
   const [unresolved, setUnresolved] = useState<UnresolvedRecord[]>([]);
   const [upgraderStatus, setUpgraderStatus] = useState<UpgraderStatus | null>(null);
+  const [isLoadingMesh, setIsLoadingMesh] = useState<boolean>(true);
 
   // Interaction state
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -66,12 +67,14 @@ export const App: React.FC = () => {
   // Fetch all summaries & upgrader status
   const refreshMeshState = useCallback(async () => {
     if (!getContractAddress()) {
+      setIsLoadingMesh(false);
       setErrorMessage(
         'Contract address is not configured. Please set VITE_CONTRACT_ADDRESS in your environment.'
       );
       return;
     }
 
+    setIsLoadingMesh(true);
     try {
       const [summaries, upgrader] = await Promise.all([
         meshRepository.getIncidentSummaries(),
@@ -103,6 +106,8 @@ export const App: React.FC = () => {
       console.error('Failed to load mesh data:', err);
       setErrorMessage(`Failed to load contract state: ${err?.message || err}`);
       throw err;
+    } finally {
+      setIsLoadingMesh(false);
     }
   }, [selectedIncidentId, selectedNodeId]);
 
@@ -455,6 +460,7 @@ export const App: React.FC = () => {
         <IncidentSummary
           incidents={incidents}
           selectedIncident={selectedIncident}
+          isLoading={isLoadingMesh}
           onSelectIncident={handleSelectIncident}
         />
 

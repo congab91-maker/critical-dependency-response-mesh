@@ -4,14 +4,24 @@ import { Incident, IncidentSummary as IncidentSummaryType } from '../genlayer/ty
 interface IncidentSummaryProps {
   incidents: IncidentSummaryType[];
   selectedIncident: Incident | null;
+  isLoading?: boolean;
   onSelectIncident: (id: number) => void;
 }
 
 export const IncidentSummary: React.FC<IncidentSummaryProps> = ({
   incidents,
   selectedIncident,
+  isLoading = false,
   onSelectIncident,
 }) => {
+  if (isLoading) {
+    return (
+      <div className="card summary-empty" role="status" aria-live="polite">
+        <p>Loading finalized incident state from GenLayer Studionet…</p>
+      </div>
+    );
+  }
+
   if (!selectedIncident) {
     return (
       <div className="card summary-empty">
