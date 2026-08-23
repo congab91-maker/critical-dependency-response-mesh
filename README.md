@@ -99,9 +99,9 @@ DISCLOSED ──► GRAPH_OPEN ──► LOCKED ──► TRIAGED ──► RESP
 
 ## 7. Current Project Status
 
-- **Phase**: Pre-deployment local verification.
-- **Contract**: Implementation complete and verified with `genvm-lint` and direct-mode test suite.
-- **Frontend**: Implementation and unit/integration test suite complete.
-- **Deployments**: No contract deployed to Studionet yet; no production contract address configured in runtime environment.
+- **Phase**: Studionet deployment and live contract verification complete; release preparation pending.
+- **Contract**: Verified deployment at [`0x671Fe675c98690068f822a6a51DA7c639CAC0ce3`](https://explorer-studio.genlayer.com/address/0x671Fe675c98690068f822a6a51DA7c639CAC0ce3).
+- **Frontend**: Implementation and unit/integration test suite complete and configured for the verified Studionet contract.
+- **Release**: GitHub/Vercel publication and the mandatory user-executed wallet E2E are not yet complete.
 
 See [`docs/VERIFICATION.md`](docs/VERIFICATION.md) for exact local evidence and [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the Studionet deployment/recovery runbook.
