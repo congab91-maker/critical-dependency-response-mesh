@@ -64,7 +64,47 @@ export const App: React.FC = () => {
   const firstAckInputRef = useRef<HTMLInputElement>(null);
   const lastActiveElementRef = useRef<HTMLElement | null>(null);
 
-  // Fetch all summaries & upgrader status
+  const loadSelectedIncident = useCallback(async (id: number) => {
+    const [inc, g, unres] = await Promise.all([
+      meshRepository.getIncident(id),
+      meshRepository.getIncidentGraph(id),
+      meshRepository.getUnresolvedRecords(id),
+    ]);
+    setSelectedIncident(inc);
+    setGraph(g);
+    setUnresolved(unres);
+    setSelectedNodeId((current) => current ?? g.nodes[0]?.project_id ?? null);
+  }, []);
+
+  const applyIncidentReadback = (inc: Incident) => {
+    setSelectedIncident(inc);
+    setIncidents((current) => current.map((summary) => summary.incident_id === inc.incident_id ? {
+      ...summary,
+      phase: inc.phase,
+      response_deadline: inc.response_deadline,
+      total_registered_projects: inc.project_count,
+      triaged_count: inc.triaged_node_count,
+      unresolved_count: inc.unresolved_count,
+    } : summary));
+  };
+
+  const applyGraphReadback = (g: IncidentGraph) => {
+    setGraph(g);
+    const triagedCount = g.nodes.filter((node) => node.has_triage).length;
+    setSelectedIncident((current) => current?.incident_id === g.incident_id ? {
+      ...current,
+      project_count: g.nodes.length,
+      edge_count: g.edges.length,
+      triaged_node_count: triagedCount,
+    } : current);
+    setIncidents((current) => current.map((summary) => summary.incident_id === g.incident_id ? {
+      ...summary,
+      total_registered_projects: g.nodes.length,
+      triaged_count: triagedCount,
+    } : summary));
+  };
+
+  // Fetch the catalog and static deployment status once, then load only the active incident.
   const refreshMeshState = useCallback(async () => {
     if (!getContractAddress()) {
       setIsLoadingMesh(false);
@@ -89,18 +129,7 @@ export const App: React.FC = () => {
           : summaries[0].incident_id;
         setSelectedIncidentId(activeId);
 
-        const [inc, g, unres] = await Promise.all([
-          meshRepository.getIncident(activeId),
-          meshRepository.getIncidentGraph(activeId),
-          meshRepository.getUnresolvedRecords(activeId),
-        ]);
-        setSelectedIncident(inc);
-        setGraph(g);
-        setUnresolved(unres);
-
-        if (g.nodes.length > 0 && !selectedNodeId) {
-          setSelectedNodeId(g.nodes[0].project_id);
-        }
+        await loadSelectedIncident(activeId);
       }
     } catch (err: any) {
       console.error('Failed to load mesh data:', err);
@@ -109,7 +138,7 @@ export const App: React.FC = () => {
     } finally {
       setIsLoadingMesh(false);
     }
-  }, [selectedIncidentId, selectedNodeId]);
+  }, [loadSelectedIncident]);
 
   useEffect(() => {
     void refreshMeshState().catch(() => {
@@ -174,10 +203,18 @@ export const App: React.FC = () => {
     });
   }, [isNewIncidentModalOpen, ackModalProjectId]);
 
-  const handleSelectIncident = (id: number) => {
+  const handleSelectIncident = async (id: number) => {
     setIsLoadingMesh(true);
     setSelectedIncidentId(id);
     setSelectedNodeId(null);
+    setErrorMessage(null);
+    try {
+      await loadSelectedIncident(id);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Failed to switch incident.');
+    } finally {
+      setIsLoadingMesh(false);
+    }
   };
 
   // Transaction Handlers
@@ -191,7 +228,7 @@ export const App: React.FC = () => {
       setReceipts((prev) => [receipt, ...prev]);
       const readback = await meshRepository.getIncident(incidentId);
       if (readback?.phase !== 'GRAPH_OPEN') throw new Error('Finalized transaction readback did not confirm GRAPH_OPEN.');
-      await refreshMeshState();
+      applyIncidentReadback(readback);
       setStatusMessage(`Phase advanced to GRAPH_OPEN. Consensus finalized and verified.`);
     } catch (err: any) {
       setStatusMessage(null);
@@ -211,7 +248,7 @@ export const App: React.FC = () => {
       setReceipts((prev) => [receipt, ...prev]);
       const readback = await meshRepository.getIncident(incidentId);
       if (readback?.phase !== 'LOCKED') throw new Error('Finalized transaction readback did not confirm LOCKED.');
-      await refreshMeshState();
+      applyIncidentReadback(readback);
       setStatusMessage(`Graph locked on-chain. Consensus finalized and verified.`);
     } catch (err: any) {
       setStatusMessage(null);
@@ -231,7 +268,7 @@ export const App: React.FC = () => {
       setReceipts((prev) => [receipt, ...prev]);
       const readback = await meshRepository.getIncident(incidentId);
       if (readback?.phase !== 'RESPONSE') throw new Error('Finalized transaction readback did not confirm RESPONSE.');
-      await refreshMeshState();
+      applyIncidentReadback(readback);
       setStatusMessage(`Incident response window opened. Consensus finalized and verified.`);
     } catch (err: any) {
       setStatusMessage(null);
@@ -251,7 +288,8 @@ export const App: React.FC = () => {
       setReceipts((prev) => [receipt, ...prev]);
       const readback = await meshRepository.getIncident(incidentId);
       if (readback?.phase !== 'CLOSED') throw new Error('Finalized transaction readback did not confirm CLOSED.');
-      await refreshMeshState();
+      applyIncidentReadback(readback);
+      setUnresolved(await meshRepository.getUnresolvedRecords(incidentId));
       setStatusMessage(`Incident closed and sealed. Consensus finalized and verified.`);
     } catch (err: any) {
       setStatusMessage(null);
@@ -276,7 +314,7 @@ export const App: React.FC = () => {
       if (!readback.nodes.some((node) => node.project_id === params.projectId.toLowerCase())) {
         throw new Error(`Finalized transaction readback did not confirm project ${params.projectId}.`);
       }
-      await refreshMeshState();
+      applyGraphReadback(readback);
       setSelectedNodeId(params.projectId);
       setStatusMessage(`Project ${params.projectId} registered on-chain and verified.`);
     } catch (err: any) {
@@ -302,7 +340,7 @@ export const App: React.FC = () => {
       if (!readback.edges.some((edge) => edge.from_project === params.projectId.toLowerCase() && edge.to_project === params.dependencyProjectId.toLowerCase())) {
         throw new Error('Finalized transaction readback did not confirm the dependency edge.');
       }
-      await refreshMeshState();
+      applyGraphReadback(readback);
       setStatusMessage(`Dependency edge added on-chain and verified.`);
     } catch (err: any) {
       setStatusMessage(null);
@@ -324,7 +362,7 @@ export const App: React.FC = () => {
       if (!readback.nodes.some((node) => node.project_id === projectId && node.has_triage)) {
         throw new Error(`Finalized transaction readback did not confirm triage for ${projectId}.`);
       }
-      await refreshMeshState();
+      applyGraphReadback(readback);
       setStatusMessage(`Validator triage consensus reached and verified for ${projectId}.`);
     } catch (err: any) {
       setStatusMessage(null);
@@ -352,7 +390,7 @@ export const App: React.FC = () => {
       setAckModalProjectId(null);
       setAckModalUri('');
       setAckModalNoteHash('');
-      await refreshMeshState();
+      applyGraphReadback(readback);
       setStatusMessage(`Action acknowledged on-chain and verified for ${params.projectId}.`);
     } catch (err: any) {
       setStatusMessage(null);
@@ -396,9 +434,11 @@ export const App: React.FC = () => {
       });
       setReceipts((prev) => [receipt, ...prev]);
       const summaries = await meshRepository.getIncidentSummaries();
-      if (!summaries.some((incident) => incident.cve_id === submittedCve)) {
+      const created = summaries.find((incident) => incident.cve_id === submittedCve);
+      if (!created) {
         throw new Error(`Finalized transaction readback did not confirm incident ${submittedCve}.`);
       }
+      setIncidents(summaries);
       setIsNewIncidentModalOpen(false);
       setNewCveId('');
       setNewPrimaryPkg('');
@@ -406,7 +446,9 @@ export const App: React.FC = () => {
       setNewNvdUri('');
       setNewOsvUri('');
       setNewSnapshotHash('');
-      await refreshMeshState();
+      setSelectedIncidentId(created.incident_id);
+      setSelectedNodeId(null);
+      await loadSelectedIncident(created.incident_id);
       setStatusMessage(`New incident disclosed on-chain and verified: ${submittedCve}.`);
     } catch (err: any) {
       setStatusMessage(null);
